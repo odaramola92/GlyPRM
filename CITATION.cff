@@ -1,11 +1,12 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite the associated paper and this software release."
 title: "GlypPRM"
-version: "0.1.0"
+version: "1.0.1"
 doi: "TODO: add DOI after archiving"
 authors:
-  - family-names: "LastName"
-    given-names: "FirstName"
+  - family-names: "Daramola"
+    given-names: "Oluwatosin"
     affiliation: "Affiliation"
-repository-code: "https://github.com/yourusername/GlypPRM"
+repository-code: "https://github.com/odaramola92/GlypPRM"
 license: "MIT"
+
