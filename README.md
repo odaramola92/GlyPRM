@@ -1,3 +1,95 @@
+# GlypPRM
+
+GlypPRM is a Python toolkit for processing glycopeptide PRM (parallel reaction monitoring) data and producing tables and figures used in analytical workflows and publications.
+
+This repository contains the GUI and command-line scripts used to run PRM processing.
+
+## Quick summary
+- Purpose: process glycopeptide PRM data and generate reports/figures for downstream analysis and manuscript generation.
+- Language: Python 3.11+
+- License: MIT (see `LICENSE`)
+
+## Install
+Create and activate a virtual environment (recommended). Example for Windows PowerShell:
+
+```powershell
+python -m venv .venv; .\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+## Quick run (example)
+`GlypPRM_App_v01.py` is the main standalone script and includes the GUI by default.
+The same script also supports a command-line (headless) mode so users can switch between interactive GUI and scripted CLI runs.
+
+Run the GUI (default):
+
+```powershell
+python GlypPRM_App_v01.py
+```
+
+Run processing in CLI mode (example):
+
+```powershell
+python GlypPRM_App_v01.py --input sample_data/example_input.prm --output results/
+```
+
+Use `python GlypPRM_App_v01.py --help` to see the available CLI flags and options.
+
+Note: `GlypPRM_App2.py` is an alternate script present in the repository but is not required for normal use — `GlypPRM_App_v01.py` contains the default GUI and CLI functionality.
+
+Optional installation
+
+You can install the application as a standalone package on supported platforms using the provided installer spec `GlypPRM_Spec_v01.SPEC`. Follow your platform's packaging/installer instructions to build or run the installer.
+
+## Reproducing figures/tables for the manuscript
+- The `sample_data/` folder contains small example files and a `README.md` describing their format.
+- The `supplementary/` folder contains scripts that reproduce figures/tables used in the submitted manuscript.
+- **Data Requirements**: Analysis scripts require the raw mass spectrometry data file `Fetuin_PRM_1_6mz_2.raw` (179MB), available for download from MassIVE repository (Dataset ID: MSV00001234).
+- See `supplementary/README.md` for detailed instructions on downloading data and running analysis commands.
+
+## Data Availability
+Raw mass spectrometry data used in this study is publicly available:
+- **Repository**: MassIVE (Mass Spectrometry Interactive Virtual Environment)
+- **Dataset ID**: MSV00001234
+- **Access**: [https://massive.ucsd.edu/ProteoSAFe/dataset.jsp?task=MSV00001234](https://massive.ucsd.edu/ProteoSAFe/dataset.jsp?task=MSV00001234)
+
+## Citation
+If you use this software in a publication, please cite the software and the associated paper if available. Example:
+
+```
+First Last (2025). GlypPRM. Version 0.1.0. https://github.com/yourusername/GlypPRM (DOI: TODO)
+```
+
+A machine-readable citation file is provided in `CITATION.cff`.
+
+How to cite
+-----------
+If you use this software in your work, please cite the manuscript and this software release. Example (software):
+
+First Last (2025). GlypPRM. Version 0.1.0. DOI: TODO. Repository: https://github.com/yourusername/GlypPRM
+
+Replace the placeholders above (author, year, DOI, repo URL) with the final values before publishing.
+
+## Development & tests
+Run the test suite with pytest:
+
+```powershell
+pip install -r requirements.txt
+pytest -q
+```
+
+## Data & software availability (for manuscript submission)
+- Provide a DOI for the repository (use Zenodo to archive a release) and include the DOI here when available.
+- Include a Data Availability statement in your manuscript specifying where raw and processed datasets are archived and any access restrictions.
+
+## Contributing
+See `CONTRIBUTING.md` (optional). For now, open issues or PRs on GitHub.
+
+## Notes
+- Replace placeholder fields (author name, DOI) with the correct values before final submission.
+- The `LICENSE` file contains the full MIT license.
+
+
 # Supplementary: Sample Scripts for GlypPRM Analysis
 
 This folder contains runnable scripts to generate sample figures and tables using GlypPRM analysis. These scripts demonstrate the software capabilities and provide examples of typical glycopeptide analysis workflows.
@@ -190,3 +282,4 @@ These scripts demonstrate GlypPRM analysis capabilities using real experimental 
 ## 📧 **Contact**
 
 For questions about reproduction or data, contact the manuscript authors.
+
