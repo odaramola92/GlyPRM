@@ -49,15 +49,15 @@ You can install the application as a standalone package on supported platforms u
 
 ## Data Availability
 Raw mass spectrometry data used in this study is publicly available:
-- **Repository**: MassIVE (Mass Spectrometry Interactive Virtual Environment)
-- **Dataset ID**: MSV00001234
-- **Access**: [https://massive.ucsd.edu/ProteoSAFe/dataset.jsp?task=MSV00001234](https://massive.ucsd.edu/ProteoSAFe/dataset.jsp?task=MSV00001234)
+- **Repository**: DRYAD
+- **Direct Link**:https://doi.org/10.5061/dryad.4tmpg4fpz 
+- **Reviewer Access**: http://datadryad.org/share/79oK8nNAOLVf2oQccjhLag6jEb1vIv9q1s4KpXOxg2k.  
 
 ## Citation
 If you use this software in a publication, please cite the software and the associated paper if available. Example:
 
 ```
-First Last (2025). GlypPRM. Version 0.1.0. https://github.com/yourusername/GlypPRM (DOI: TODO)
+Oluwatosin Daramola, Sherifdeen Onigbinde, Moyinoluwa Adeniyi, Cristian D. Gutierrez-Reyes, Mojibola Fowowe, Vishal Sadilya, Yehia Mechref (2025). GlypPRM. Version 0.1.0. https://github.com/yourusername/GlypPRM (DOI: TODO)
 ```
 
 A machine-readable citation file is provided in `CITATION.cff`.
@@ -66,9 +66,7 @@ How to cite
 -----------
 If you use this software in your work, please cite the manuscript and this software release. Example (software):
 
-First Last (2025). GlypPRM. Version 0.1.0. DOI: TODO. Repository: https://github.com/yourusername/GlypPRM
-
-Replace the placeholders above (author, year, DOI, repo URL) with the final values before publishing.
+Oluwatosin Daramola, Sherifdeen Onigbinde, Moyinoluwa Adeniyi, Cristian D. Gutierrez-Reyes, Mojibola Fowowe, Vishal Sadilya, Yehia Mechref (2025). GlypPRM. Version 0.1.0. DOI: TODO. Repository: https://github.com/yourusername/GlypPRM
 
 ## Development & tests
 Run the test suite with pytest:
@@ -77,18 +75,6 @@ Run the test suite with pytest:
 pip install -r requirements.txt
 pytest -q
 ```
-
-## Data & software availability (for manuscript submission)
-- Provide a DOI for the repository (use Zenodo to archive a release) and include the DOI here when available.
-- Include a Data Availability statement in your manuscript specifying where raw and processed datasets are archived and any access restrictions.
-
-## Contributing
-See `CONTRIBUTING.md` (optional). For now, open issues or PRs on GitHub.
-
-## Notes
-- Replace placeholder fields (author name, DOI) with the correct values before final submission.
-- The `LICENSE` file contains the full MIT license.
-
 
 # Supplementary: Sample Scripts for GlypPRM Analysis
 
@@ -187,10 +173,8 @@ python scripts/table_script.py --raw-file Fetuin_PRM_1_6mz_2.raw --targets data/
 - **File**: `Fetuin_PRM_1_6mz.raw` (179MB)
 - **Location**: Should be placed in the `supplementary/` directory
 - **Note**: Due to GitHub's 100MB file size limit, this file is not included in the repository
-- **Download**: Available on MassIVE repository
-  - **Dataset ID**: MSV00001234
-  - **Direct Link**: [https://massive.ucsd.edu/ProteoSAFe/dataset.jsp?task=MSV00001234](https://massive.ucsd.edu/ProteoSAFe/dataset.jsp?task=MSV00001234)
-  - **Alternative**: [ftp://massive.ucsd.edu/MSV00001234/](ftp://massive.ucsd.edu/MSV00001234/)
+- **Direct Link**:https://doi.org/10.5061/dryad.4tmpg4fpz 
+- **Reviewer Access**: http://datadryad.org/share/79oK8nNAOLVf2oQccjhLag6jEb1vIv9q1s4KpXOxg2k.  
 - **Usage**: Download and place in the `supplementary/` directory before running analysis scripts
 
 ### **Figure Targets** (`data/figure_targets.xlsx`)
@@ -282,4 +266,5 @@ These scripts demonstrate GlypPRM analysis capabilities using real experimental 
 ## 📧 **Contact**
 
 For questions about reproduction or data, contact the manuscript authors.
+
 
