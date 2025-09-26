@@ -18,7 +18,11 @@ def get_version():
     import subprocess
     from pathlib import Path
 
-    repo_root = Path(__file__).resolve().parent
+    # __file__ may not be defined when PyInstaller executes the spec; fall back to CWD
+    try:
+        repo_root = Path(__file__).resolve().parent
+    except NameError:
+        repo_root = Path.cwd()
     try:
         # Use --tags --always --dirty to get a sensible string even without annotated tags
         ver = subprocess.check_output(
@@ -188,6 +192,14 @@ PYQT5_IMPORTS = [
     'PyQt5.QtSvg', 'PyQt5.QtNetwork', 'sip', 'PyQt5.sip'
 ]
 
+# Qt-specific matplotlib imports (defined explicitly so spec can reference it safely)
+MATPLOTLIB_QT_IMPORTS = [
+    'matplotlib.backends.backend_qt5agg',
+    'matplotlib.backends._backend_qt5agg',
+    'matplotlib.backends.qt_compat',
+    'matplotlib.backends.qt_editor'
+]
+
 DOMAIN_SPECIFIC_IMPORTS = [
     'fisher_py', 'fisher_py._lib', 'fisher_py.raw_file_reader',
     'fisher_py.ms_file_reader', 'pythonnet', 'clr',
@@ -239,7 +251,7 @@ a = Analysis(
     hookspath=['hooks'],  # Custom hooks directory
     hooksconfig={
         "matplotlib": {
-            "backends": ["Agg"]  # Only include Agg backend for headless operation
+            "backends": ["Agg", "Qt5Agg"]  # Include both Agg and Qt5Agg backends
         }
     },
     runtime_hooks=['runtime_hook.py'],
@@ -251,8 +263,7 @@ a = Analysis(
         # Other Qt versions
         'PyQt4', 'PyQt6', 'PySide', 'PySide2', 'PySide6',
         
-        # Matplotlib GUI backends (keep only Agg)
-        'matplotlib.backends.backend_qt5agg',
+        # Matplotlib GUI backends (exclude unused ones, keep Qt5)
         'matplotlib.backends.backend_qt4agg',
         'matplotlib.backends.backend_tkagg',
         'matplotlib.backends._backend_tk',
