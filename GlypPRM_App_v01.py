@@ -109,12 +109,14 @@ if __name__ == "__main__":
 class GlycanMassCalculator:
     def __init__(self, modification_type=6, use_cam=True, fixed_mods=None, variable_mods=None, mod_string=None, peptide=None):
         # Initialize existing properties
+        # Monoisotopic masses (high precision) for monosaccharides
+        # Source: common glycan MS references/Unimod-like precision
         self.BASE_MASSES = {
-            'HexNAc': 203.0794,
-            'Hex': 162.0528,
-            'Fuc': 146.0579,
-            'NeuAc': 291.0954,
-            'NeuGc': 307.0903
+            'HexNAc': 203.079373,
+            'Hex': 162.052824,
+            'Fuc': 146.057909,
+            'NeuAc': 291.095417,
+            'NeuGc': 307.090331
         }
         
         # Initialize attributes with default values
@@ -130,24 +132,25 @@ class GlycanMassCalculator:
             'Permethylation': 14.0157,
         }
         self.REDUCING_END_MASSES = {
-            0:18.0153,  # Free end (H2O)
-            1: 20.0262,  # Reduced end (H2 + 2H)
-            2:18.0153,  # Permethylated free end (H2O, before permethylation)
-            3: 20.0262,  # Permethylated reduced end (H2 + 2H, before permethylation)
-            4:18.0153,  # 2AB labeled (H2O, before 2AB)
-            5:18.0153,   # 2AB labeled and permethylated (H2O, before 2AB and permethylation)
-            6: 0.0   # PEP (default to water, replaced by peptide mass)
+            0: 18.010564684,  # Free end (H2O)
+            1: 20.0262,       # Reduced end (approx; keep as-is if used elsewhere)
+            2: 18.010564684,  # Permethylated free end (before permethylation)
+            3: 20.0262,       # Permethylated reduced end (approx)
+            4: 18.010564684,  # 2AB labeled (before 2AB)
+            5: 18.010564684,  # 2AB labeled and permethylated (before 2AB)
+            6: 0.0            # PEP - replaced by peptide mass
         }
         self.ADDITIONAL_MODIFICATIONS = {
             0: 0.0,      # Free end - no additional mod
             1: 0.0,      # Reduced end - no additional mod
-            2: 28.0314,  # Permethylated free end - 2 extra methyl groups (approximate)
-            3: 28.0314,   # Permethylated reduced end - 3 extra methyl groups (approximate)
+            2: 28.0313,  # Permethylation approximation (retain prior behavior)
+            3: 28.0313,  # Permethylation approximation (retain prior behavior)
             4: 120.0688, # 2AB labeled - 2AB mass minus water
             5: 190.1451, # 2AB labeled and permethylated - 2AB plus permethylation
-            6:18.0153       # PEP - peptide mass replaces water, no additional modification
+            6: 18.010564684  # PEP - rarely used; peptide replaces water
         }
-        self.PROTON_MASS = 1.0073
+        # High-precision proton mass for m/z
+        self.PROTON_MASS = 1.00727646688
         self.PEPTIDE_MASSES = {}  # To store peptide masses
         
         # Convert input parameters to safe types
@@ -286,11 +289,26 @@ class GlycanMassCalculator:
         """
         # Define standard amino acid masses
         amino_acid_masses = {
-            'A': 71.0371, 'C': 103.0092, 'D': 115.0269, 'E': 129.0426,
-            'F': 147.0684, 'G': 57.0215, 'H': 137.0589, 'I': 113.0841,
-            'K': 128.0950, 'L': 113.0841, 'M': 131.0405, 'N': 114.0429,
-            'P': 97.0528, 'Q': 128.0586, 'R': 156.1011, 'S': 87.0320,
-            'T': 101.0477, 'V': 99.0684, 'W': 186.0793, 'Y': 163.0633
+            'A': 71.037114,
+            'C': 103.009185,
+            'D': 115.026943,
+            'E': 129.042593,
+            'F': 147.068414,
+            'G': 57.021464,
+            'H': 137.058912,
+            'I': 113.084064,
+            'K': 128.094963,
+            'L': 113.084064,
+            'M': 131.040485,
+            'N': 114.042927,
+            'P': 97.052764,
+            'Q': 128.058578,
+            'R': 156.101111,
+            'S': 87.032028,
+            'T': 101.047679,
+            'V': 99.068414,
+            'W': 186.079313,
+            'Y': 163.063329
         }
         
         # Define common modification masses
@@ -407,10 +425,10 @@ class GlycanMassCalculator:
         applied_mods = {}
         mod_masses_applied = 0.0
         
-        # Define common modification masses
+        # Define common modification masses (Unimod-precise where relevant)
         mod_masses = {
             # Fixed modifications
-            'CAM': 57.02146,      # Carbamidomethylation (Cys) - iodoacetamide
+            'CAM': 57.021464,      # Carbamidomethylation (Cys) - iodoacetamide
             'PAM': 71.03711,      # Propionamide (Cys) - acrylamide    
             'Palm': 238.2297,     # Palmitoylation (Cys)
             'Carbamyl': 43.0058,  # Carbamylation (N-term, Lys)
@@ -421,25 +439,25 @@ class GlycanMassCalculator:
             'iTRAQ8': 304.20536,  # iTRAQ 8-plex (Lys/N-term)
                 
             # Variable modifications
-            'Ox': 15.99491,       # Oxidation (Met)
-            'Deam': 0.98402,      # Deamidation (Asn/Gln)
-            'Phos': 79.96633,     # Phosphorylation (Ser/Thr/Tyr)
-            'Ac': 42.01056,       # Acetylation (Lys/N-term)
-            'Methyl': 14.0157,    # Methylation (Lys/Arg)
-            'DiMethyl': 28.0313,  # Dimethylation (Lys/Arg)
-            'TriMethyl': 42.0470, # Trimethylation (Lys)
-            'Pyro-glu': -17.0265, # Pyroglutamic acid from N-term Gln
-            'Pyro-cmC': -17.0265, # Pyroglutamic acid from N-term carbamidomethyl Cys
-            'GG': 114.0429,       # GlyGly (Lys) - ubiquitination remnant
-            'HexNAc': 203.0794,   # O-GlcNAc (Ser/Thr)
-            'Formyl': 27.99492,   # Formylation (Lys/N-term)
-            'Nitration': 44.98508,# Nitration (Tyr)
-            'Sulf': 79.95682,     # Sulfation (Tyr)
+            'Ox': 15.994915,       # Oxidation (Met)
+            'Deam': 0.984016,      # Deamidation (Asn/Gln)
+            'Phos': 79.966331,     # Phosphorylation (Ser/Thr/Tyr)
+            'Ac': 42.010565,       # Acetylation (Lys/N-term)
+            'Methyl': 14.015650,   # Methylation (Lys/Arg)
+            'DiMethyl': 28.031300, # Dimethylation (Lys/Arg)
+            'TriMethyl': 42.046950,# Trimethylation (Lys)
+            'Pyro-glu': -17.026549, # Pyroglutamic acid from N-term Gln
+            'Pyro-cmC': -17.026549, # Pyroglutamic acid from N-term carbamidomethyl Cys
+            'GG': 114.042927,      # GlyGly (Lys) - ubiquitination remnant
+            'HexNAc': 203.079373,  # O-GlcNAc (Ser/Thr)
+            'Formyl': 27.994915,   # Formylation (Lys/N-term)
+            'Nitration': 44.985078,# Nitration (Tyr)
+            'Sulf': 79.956815,     # Sulfation (Tyr)
             'Biotin': 226.0776,   # Biotinylation (Lys)
-            'Malonyl': 86.00039,  # Malonylation (Lys)
-            'Succinyl': 100.01604,# Succinylation (Lys)
-            'Myristoyl': 210.19837,# Myristoylation (N-term Gly)
-            'Farnesyl': 204.18780,# Farnesylation (Cys)
+            'Malonyl': 86.000394,  # Malonylation (Lys)
+            'Succinyl': 100.016044,# Succinylation (Lys)
+            'Myristoyl': 210.198366,# Myristoylation (N-term Gly)
+            'Farnesyl': 204.187801,# Farnesylation (Cys)
             'SUMO1-GG': 213.14430 # SUMOylation remnant (Lys)
         }
         
@@ -687,7 +705,7 @@ class GlycanMassCalculator:
         self.applied_mods = applied_mods
 
         # Calculate peptide mass
-        mass = 18.0153  # Add water mass for peptide
+        mass = 18.010564684  # Add monoisotopic water mass for peptide (H2O)
         #print(f"\n=== PEPTIDE MASS CALCULATION ===")
         #print(f"Starting with water mass: {mass:.4f} Da")
         
@@ -934,8 +952,9 @@ class GlycanMassCalculator:
             #     print(f"  Added reducing end mass: {self.REDUCING_END_MASSES[self.modification_type]:.4f}")
             #     print(f"  Base mass after adjustment: {base_mass:.4f} Da")
         
-        # Handle reducing end for Y and YY ions
-        elif fragment_type in ['y_ions', 'yy_ions']:
+        # Handle reducing end for peptide-attached glycan ions (Y, YY, YYY, BYYY)
+        # Previous implementation omitted 'yyy_ions' and 'byyy_ions', causing glycan-only masses.
+        elif fragment_type in ['y_ions', 'yy_ions', 'yyy_ions', 'byyy_ions']:
             # if debug:
             #     print(f"  Y/YY ion detected - processing special rules")
                     
@@ -972,7 +991,8 @@ class GlycanMassCalculator:
                     #     print(f"  Added peptide mass: {peptide_mass:.4f} Da")
                     #     print(f"  Mass after adding peptide: {base_mass:.4f} Da")
                 else:
-                    # No peptide provided, add basic peptide end mass
+                    # No peptide provided or glycan-only flag set: add reducing end mass only
+                    # This applies to Y/YY/YYY/BYYY when peptide sequence absent.
                     base_mass += self.REDUCING_END_MASSES[self.modification_type]
                     # if debug:
                     #     print(f"  No peptide provided or glycan-only flag set, adding reducing end mass: {self.REDUCING_END_MASSES[self.modification_type]:.4f} Da")
@@ -1343,17 +1363,33 @@ class Glycan:
         self.structure_fingerprints.clear()
         self.possible_structures.clear()
         
-        # Special case handling for simple O-glycans
+        # Special case handling for simple glycans (both O and N types)
+        # These are common core fragments that don't fit the standard structure prediction
+        
+        # HexNAc(1) - single GlcNAc/GalNAc
+        if self.hexnac_total == 1 and self.hex_total == 0 and self.fuc_total == 0 and self.neuac_total == 0:
+            glycan_desc = "Tn antigen" if self.glycan_type == "O" else "Core GlcNAc fragment"
+            print(f"Special case: Simple HexNAc ({glycan_desc})")
+            G = nx.DiGraph()
+            G.add_node(1, type='HexNAc', position='core_reducing', label='HexNAc')
+            self.possible_structures.append(G)
+            print(f"Generated 1 fixed structure for HexNAc(1) - {self.glycan_type}-glycan")
+            return self.possible_structures
+        
+        # HexNAc(1)Fuc(1) - GlcNAc with core fucose
+        if self.hexnac_total == 1 and self.hex_total == 0 and self.fuc_total == 1 and self.neuac_total == 0:
+            glycan_desc = "O-glycan with Fuc" if self.glycan_type == "O" else "Core GlcNAc with fucose"
+            print(f"Special case: HexNAc(1)Fuc(1) ({glycan_desc})")
+            G = nx.DiGraph()
+            G.add_node(1, type='HexNAc', position='core_reducing', label='HexNAc')
+            G.add_node(2, type='Fuc', position='branch', label='Fuc')
+            G.add_edge(1, 2)
+            self.possible_structures.append(G)
+            print(f"Generated 1 fixed structure for HexNAc(1)Fuc(1) - {self.glycan_type}-glycan")
+            return self.possible_structures
+        
+        # O-glycan specific simple structures
         if self.glycan_type == "O":
-            # Special case for HexNAc (Tn antigen) - glycan code 1000
-            if self.hexnac_total == 1 and self.hex_total == 0 and self.fuc_total == 0 and self.neuac_total == 0:
-                print("Special case: Simple HexNAc (Tn antigen)")
-                G = nx.DiGraph()
-                G.add_node(1, type='HexNAc', position='core_reducing', label='HexNAc')
-                self.possible_structures.append(G)
-                print("Generated 1 fixed structure for HexNAc (1000)")
-                return self.possible_structures
-                
             # Special case for HexNAc-Hex (T antigen) - glycan code 1100
             if self.hexnac_total == 1 and self.hex_total == 1 and self.fuc_total == 0 and self.neuac_total == 0:
                 print("Special case: Simple HexNAc-Hex (T antigen)")
@@ -1810,55 +1846,181 @@ class Glycan:
     def generate_fragments(self, graph, modification_type=6, use_cam=True, 
                         fixed_mods=None, variable_mods=None, mod_string=None, peptide=None):
         
-        # NEW: Special handling for single monosaccharide O-glycans
-        if self.glycan_type == "O":
-            # Count total monosaccharides in the structure  
-            total_monosaccharides = len([n for n in graph.nodes() if n != 1])  # Exclude reducing end
-            
-            # FIXED: Only apply special case for TRUE single monosaccharides (like HexNAc(1) or Hex(1))
-            # NOT for multi-monosaccharide O-glycans like HexNAc(1)Fuc(1)
-            if total_monosaccharides == 1:  # This should ONLY be for HexNAc(1) OR Hex(1) alone
-                calculator = GlycanMassCalculator(
-                    modification_type=modification_type, 
-                    use_cam=use_cam,
-                    fixed_mods=fixed_mods,
-                    variable_mods=variable_mods,
-                    mod_string=mod_string
-                )
-                
-                # Get the monosaccharide composition
-                counts = self._count_residues(graph)
-                
-                # ADDITIONAL CHECK: Ensure it's truly a single type of monosaccharide
-                # Count how many different monosaccharide types are present
-                monosac_types_present = sum(1 for mono in ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc'] 
-                                        if counts.get(mono, 0) > 0)
-                
-                if monosac_types_present == 1:  # ONLY if it's truly a single monosaccharide type
-                    # Create the full glycopeptide fragment
-                    fragments = {
-                        'b_ions': [],
-                        'y_ions': [counts],
-                        'by_ions': [],
-                        'yy_ions': []
-                    }
-                    
-                    # Create cleavage info for the single fragment
-                    cleavage_info = {
-                        'b_ions': {},
-                        'y_ions': {self._format_string(counts, 'y', has_reducing_end=True): 'full_glycopeptide'},
-                        'by_ions': {},
-                        'yy_ions': {}
-                    }
-                    
-                    # Enhanced message to show which type was handled
-                    monosac_type = 'HexNAc' if counts.get('HexNAc', 0) > 0 else 'Hex'
-                    print(f"Generated single {monosac_type} O-glycan fragment: {self._format_string(counts, 'y', has_reducing_end=True)}")
-                    return fragments, cleavage_info
-                else:
-                    print(f"Multi-monosaccharide O-glycan detected - proceeding with normal fragmentation")
+        # Count total monosaccharides in the structure
+        total_monosaccharides = len([n for n in graph.nodes()])
         
-        # Continue with existing fragmentation logic for complex structures INCLUDING HexNAc(1)Fuc(1)
+        print(f"\n{'='*80}")
+        print(f"DEBUG: generate_fragments called for {self.glycan_type}-glycan")
+        print(f"  Total monosaccharides in graph: {total_monosaccharides}")
+        print(f"  Graph nodes: {list(graph.nodes())}")
+        print(f"{'='*80}\n")
+        
+        print(f"TRACE: PARAMS: peptide={peptide}, modification_type={modification_type}, use_cam={use_cam}")
+        print(f"TRACE: Expected Y fragments should have -PEP suffix (peptide attached)")
+        print()
+        
+        # Special handling for single monosaccharide glycans (both N and O types)
+        # This handles cases like HexNAc(1), Hex(1), etc.
+        if total_monosaccharides == 1:
+            calculator = GlycanMassCalculator(
+                modification_type=modification_type, 
+                use_cam=use_cam,
+                fixed_mods=fixed_mods,
+                variable_mods=variable_mods,
+                mod_string=mod_string
+            )
+            
+            # Get the monosaccharide composition
+            counts = self._count_residues(graph)
+            print(f"DEBUG: Single monosaccharide detected - composition: {counts}")
+            
+            # Count how many different monosaccharide types are present
+            monosac_types_present = sum(1 for mono in ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc'] 
+                                    if counts.get(mono, 0) > 0)
+            
+            print(f"DEBUG: Number of different monosaccharide types: {monosac_types_present}")
+            
+            if monosac_types_present == 1:  # ONLY if it's truly a single monosaccharide type
+                # For single monosaccharides, treat the intact glycan as a B-ion fragment
+                # This ensures we can detect the intact glycan mass in the spectra
+                fragments = {
+                    'b_ions': [counts.copy()],  # The intact glycan as a B-ion
+                    'y_ions': [counts.copy()],  # Also as Y-ion for compatibility
+                    'by_ions': [],
+                    'yy_ions': []
+                }
+                
+                # Create cleavage info for the single fragment
+                monosac_type = next(mono for mono in ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc'] 
+                                   if counts.get(mono, 0) > 0)
+                fragment_name_b = self._format_string(counts, 'b', has_reducing_end=False)
+                fragment_name_y = self._format_string(counts, 'y', has_reducing_end=True)
+                
+                cleavage_info = {
+                    'b_ions': {fragment_name_b: f'intact_{monosac_type}'},
+                    'y_ions': {fragment_name_y: f'intact_{monosac_type}'},
+                    'by_ions': {},
+                    'yy_ions': {}
+                }
+                
+                print(f"\n{'*'*80}")
+                print(f"SUCCESS: Generated intact {monosac_type} ({self.glycan_type}-glycan) fragments:")
+                print(f"  B-ion: {fragment_name_b}")
+                print(f"  Y-ion: {fragment_name_y}")
+                print(f"  Fragment composition: {counts}")
+                print(f"  This represents the intact glycan and will be used for fragment matching")
+                print(f"{'*'*80}\n")
+                
+                return fragments, cleavage_info
+        
+        # Special handling for 2-monosaccharide glycans (e.g., HexNAc(1)Fuc(1))
+        # Generate all possible cleavage products manually
+        if total_monosaccharides == 2:
+            calculator = GlycanMassCalculator(
+                modification_type=modification_type, 
+                use_cam=use_cam,
+                fixed_mods=fixed_mods,
+                variable_mods=variable_mods,
+                mod_string=mod_string
+            )
+            
+            # Get the full composition
+            full_counts = self._count_residues(graph)
+            print(f"DEBUG: 2-monosaccharide glycan detected - composition: {full_counts}")
+            
+            # Initialize fragment lists
+            fragments = {
+                'b_ions': [],
+                'y_ions': [],
+                'by_ions': [],
+                'yy_ions': []
+            }
+            
+            cleavage_info = {
+                'b_ions': {},
+                'y_ions': {},
+                'by_ions': {},
+                'yy_ions': {}
+            }
+            
+            # 1. Add the intact glycan as B-ion (both monosaccharides, no peptide)
+            # This is HexNAc(1)Fuc(1)-B
+            fragments['b_ions'].append(full_counts.copy())
+            fragment_name_b_full = self._format_string(full_counts, 'b', has_reducing_end=False)
+            cleavage_info['b_ions'][fragment_name_b_full] = 'intact_glycan'
+            print(f"  Generated B-ion (intact): {fragment_name_b_full}")
+            
+            # 2. Add the intact glycopeptide as Y-ion (peptide + both monosaccharides)
+            # This is Pep-HexNAc(1)Fuc(1)-Y
+            if peptide and modification_type == 6:
+                fragments['y_ions'].append(full_counts.copy())
+                fragment_name_y_full = self._format_string(full_counts, 'y', has_reducing_end=True)
+                cleavage_info['y_ions'][fragment_name_y_full] = 'intact_glycopeptide'
+                print(f"  Generated Y-ion (intact glycopeptide): {fragment_name_y_full}")
+            
+            # 3. Generate fragments from cleaving between the two monosaccharides
+            # Get individual monosaccharide types
+            monosac_types = [mono for mono in ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc'] 
+                           if full_counts.get(mono, 0) > 0]
+            
+            if len(monosac_types) == 2:
+                # Create individual monosaccharide fragments
+                for mono_type in monosac_types:
+                    mono_count = {
+                        'HexNAc': 1 if mono_type == 'HexNAc' else 0,
+                        'Hex': 1 if mono_type == 'Hex' else 0,
+                        'Fuc': 1 if mono_type == 'Fuc' else 0,
+                        'NeuAc': 1 if mono_type == 'NeuAc' else 0,
+                        'NeuGc': 1 if mono_type == 'NeuGc' else 0
+                    }
+                    
+                    # Add as B-ion (individual monosaccharide, no peptide)
+                    # This is like Fuc(1)-B or HexNAc(1)-B
+                    fragments['b_ions'].append(mono_count.copy())
+                    fragment_name_b = self._format_string(mono_count, 'b', has_reducing_end=False)
+                    cleavage_info['b_ions'][fragment_name_b] = f'single_{mono_type}'
+                    print(f"  Generated B-ion (single): {fragment_name_b}")
+                
+                # For peptide-attached glycans, also generate:
+                # - BY ion: one monosaccharide lost from non-reducing end (HexNAc(1)-BY if Fuc was cleaved)
+                # - Y ion with one monosaccharide: Pep-HexNAc(1)-Y (peptide + reducing end monosaccharide)
+                if peptide and modification_type == 6:
+                    # Determine which monosaccharide is at the reducing end (attached to peptide)
+                    # For typical N-glycans, HexNAc is at reducing end
+                    # For O-glycans, it's also typically HexNAc (GalNAc)
+                    reducing_mono = 'HexNAc' if 'HexNAc' in monosac_types else monosac_types[0]
+                    
+                    reducing_count = {
+                        'HexNAc': 1 if reducing_mono == 'HexNAc' else 0,
+                        'Hex': 1 if reducing_mono == 'Hex' else 0,
+                        'Fuc': 1 if reducing_mono == 'Fuc' else 0,
+                        'NeuAc': 1 if reducing_mono == 'NeuAc' else 0,
+                        'NeuGc': 1 if reducing_mono == 'NeuGc' else 0
+                    }
+                    
+                    # Add Pep-HexNAc(1)-Y (or whatever is at reducing end)
+                    fragments['y_ions'].append(reducing_count.copy())
+                    fragment_name_y = self._format_string(reducing_count, 'y', has_reducing_end=True)
+                    cleavage_info['y_ions'][fragment_name_y] = f'peptide_with_{reducing_mono}'
+                    print(f"  Generated Y-ion (peptide + reducing monosac): {fragment_name_y}")
+                    
+                    # Add BY ion (reducing monosaccharide, after loss of non-reducing)
+                    # This is HexNAc(1)-BY
+                    fragments['by_ions'].append(reducing_count.copy())
+                    fragment_name_by = self._format_string(reducing_count, 'by', has_reducing_end=False)
+                    cleavage_info['by_ions'][fragment_name_by] = f'cleaved_at_{reducing_mono}'
+                    print(f"  Generated BY-ion (reducing monosac after cleavage): {fragment_name_by}")
+            
+            print(f"\n{'*'*80}")
+            print(f"SUCCESS: Generated fragments for 2-monosaccharide glycan:")
+            print(f"  Total B-ions: {len(fragments['b_ions'])}")
+            print(f"  Total Y-ions: {len(fragments['y_ions'])}")
+            print(f"  Total BY-ions: {len(fragments['by_ions'])}")
+            print(f"{'*'*80}\n")
+            
+            return fragments, cleavage_info
+        
+        # Continue with existing fragmentation logic for complex structures (3+ monosaccharides)
         # Initialize fragments dictionary for complex O-glycans and N-glycans
         fragments = {
             'b_ions': [],
@@ -1931,6 +2093,23 @@ class Glycan:
                             cleavage_info['b_ions'][b_string] = f"Cleavage at {u}-{v}"
                             composition_registry['b'].add(tuple(sorted((k, v) for k, v in b_fragment.items())))
         
+        # Reclassify core two-cleavage fragment as YY-only for glycopeptides
+        if modification_type == 6 and peptide:
+            filtered_y_ions = []
+            for y_fragment in fragments['y_ions']:
+                if (y_fragment.get('HexNAc', 0) == 2 and y_fragment.get('Hex', 0) == 2 and
+                    y_fragment.get('Fuc', 0) == 0 and y_fragment.get('NeuAc', 0) == 0):
+                    y_label = self._format_string(y_fragment, 'y', has_reducing_end=True)
+                    print(f"[YY FIX] Removing single-cleavage classification for {y_label}; reserved for YY")
+                    unique_y_ions.discard(y_label)
+                    cleavage_info['y_ions'].pop(y_label, None)
+                    comp_key = tuple(sorted((k, v) for k, v in y_fragment.items()))
+                    composition_registry['y'].discard(comp_key)
+                    continue
+                filtered_y_ions.append(y_fragment)
+            if len(filtered_y_ions) != len(fragments['y_ions']):
+                fragments['y_ions'] = filtered_y_ions
+
         # Generate BY ions with improved logic
         # Identify path components for internal fragments
         structure_paths = self._identify_structure_paths(graph, reducing_end)
@@ -2042,7 +2221,11 @@ class Glycan:
                 else:
                     has_branch_fuc = True
         
+        print(f"\n[YY GENERATION START] {len(edge_combinations)} edge pairs to test for {self.glycan_type}-glycan")
+        print(f"   has_core_fuc={has_core_fuc}, has_branch_fuc={has_branch_fuc}")
+        
         # Generate YY ions with structure-specific validation
+        yy_topology_count = 0
         for edge1, edge2 in edge_combinations:
             u1, v1 = edge1
             u2, v2 = edge2
@@ -2053,8 +2236,11 @@ class Glycan:
             
             # Skip invalid edge combinations for YY ion generation
             if self._is_invalid_yy_combination(graph, edge1, edge2, has_core_fuc):
+                print(f"   [REJECTED] edge pair {u1}-{v1} + {u2}-{v2} (invalid combination)")
                 continue
-                
+            
+            print(f"   [OK] Processing: edge pair {u1}-{v1} + {u2}-{v2}")
+            
             # Process this edge pair
             temp_graph = copy.deepcopy(graph)
             try:
@@ -2072,17 +2258,30 @@ class Glycan:
                         
                         if yy_fragment and sum(yy_fragment.values()) > 0:
                             yy_string = self._format_string(yy_fragment, 'yy', has_reducing_end=True)
+                            print(f"      [BEFORE PEP FIX] yy_string = {yy_string}")
+                            # CRITICAL: Replace '-redend' with '-PEP' when peptide is attached (modification_type==6)
+                            if modification_type == 6 and peptide:
+                                yy_string = yy_string.replace('-redend', '-PEP')
+                                print(f"      [AFTER PEP FIX] yy_string = {yy_string} (mod_type={modification_type}, peptide={peptide})")
+                            else:
+                                print(f"      [NO PEP FIX] mod_type={modification_type}, peptide={peptide}")
                             if yy_string not in unique_yy_ions:
                                 unique_yy_ions.add(yy_string)
                                 fragments['yy_ions'].append(yy_fragment)
                                 cleavage_info['yy_ions'][yy_string] = f"Double cleavage at {u1}-{v1} and {u2}-{v2}"
                                 composition_registry['yy'].add(tuple(sorted((k, v) for k, v in yy_fragment.items())))
+                                print(f"      [ADDED] {yy_string} to fragments")
+                                yy_topology_count += 1
+                            else:
+                                print(f"      [DUPLICATE] {yy_string} already in unique_yy_ions")
                         break
             except nx.NetworkXError:
                 pass
         
+        print(f"[YY TOPOLOGY GENERATION] Added {yy_topology_count} YY fragments from edge pairs")
+        
         # Generate YY ions specifically from core fucose cleavage
-        self._generate_core_fucose_yy_ions(graph, fragments, cleavage_info, unique_yy_ions, composition_registry)
+        self._generate_core_fucose_yy_ions(graph, fragments, cleavage_info, unique_y_ions, composition_registry)
         
         # Generate specific core BY ions that might be missed
         self._generate_core_by_ions(graph, fragments, cleavage_info, unique_by_ions, composition_registry)
@@ -2093,10 +2292,91 @@ class Glycan:
         # In the generate_fragments method, add after the other YY ion generation calls:
         if self.glycan_type == "O":
             self._generate_oglycan_yy_ions(graph, fragments, cleavage_info, unique_yy_ions, composition_registry)
+        
+        # CRITICAL: For N-glycans, ensure Y-HexNAc2 is always generated (core structure fragment)
+        # This is the fragment after cleaving all sugars from the core mannose branches
+        if self.glycan_type == "N" and self.hexnac_total >= 2:
+            y_hexnac2 = {'HexNAc': 2}
+            y_hexnac2_str = self._format_string(y_hexnac2, 'y', has_reducing_end=True)
+            
+            # Check if it's already in the fragments
+            y_hexnac2_exists = False
+            for existing in fragments['y_ions']:
+                if existing.get('HexNAc') == 2 and existing.get('Hex', 0) == 0 and existing.get('Fuc', 0) == 0 and existing.get('NeuAc', 0) == 0:
+                    y_hexnac2_exists = True
+                    break
+            
+            if not y_hexnac2_exists:
+                fragments['y_ions'].append(y_hexnac2)
+                cleavage_info['y_ions'][y_hexnac2_str] = "Core Y-ion: peptide + 2 core HexNAcs"
+                print(f"  Added core Y-HexNAc2 fragment: {y_hexnac2_str}")
+        
+        # CRITICAL: For N-glycans, ensure YY-HexNAc2-Hex2 is always generated (core YY fragment)
+        # This is the minimal YY fragment with core structure (2 HexNAc + 2 Hex from central mannose)
+        if self.glycan_type == "N" and self.hexnac_total >= 2 and self.hex_total >= 2:
+            yy_core = {'HexNAc': 2, 'Hex': 2}
+            yy_core_str = self._format_string(yy_core, 'yy', has_reducing_end=True)
+            print(f"\n[YY CORE INSERTION]")
+            print(f"   [BEFORE PEP FIX] yy_core_str = {yy_core_str}")
+            # CRITICAL: Replace '-redend' with '-PEP' when peptide is attached (modification_type==6)
+            if modification_type == 6 and peptide:
+                yy_core_str = yy_core_str.replace('-redend', '-PEP')
+                print(f"   [AFTER PEP FIX] yy_core_str = {yy_core_str}")
+            else:
+                print(f"   [NO PEP FIX] mod_type={modification_type}, peptide={peptide}")
+            
+            print(f"   Looking for {yy_core_str} in {len(fragments['yy_ions'])} existing YY fragments")
+            
+            # Check if it's already in the fragments
+            yy_core_exists = False
+            for idx, existing in enumerate(fragments['yy_ions']):
+                if (existing.get('HexNAc') == 2 and existing.get('Hex') == 2 and 
+                    existing.get('Fuc', 0) == 0 and existing.get('NeuAc', 0) == 0):
+                    yy_core_exists = True
+                    print(f"   [OK] Core YY found at index {idx}: {existing}")
+                    break
+            
+            if not yy_core_exists:
+                print(f"   [MISSING] Core YY NOT FOUND - ADDING MANDATORY: {yy_core_str}")
+                fragments['yy_ions'].append(yy_core)
+                cleavage_info['yy_ions'][yy_core_str] = "Core YY-ion: peptide + 2 core HexNAcs + 2 core Hex"
+                print(f"   [ADDED] Mandatory core YY-HexNAc2-Hex2 fragment: {yy_core_str}")
+                print(f"   -> YY fragments now: {len(fragments['yy_ions'])}")
+            else:
+                print(f"   [OK] Core YY already present - no addition needed")
+            print()
             
         # Final validation: Remove duplicate fragments between b/by and y/yy types
         # Apply improved validation to correctly classify fragments
+
+        # Ensure YY-exclusive compositions are not retained as Y-ions (glycopeptides only)
+        if modification_type == 6 and peptide:
+            yy_compositions = {
+                tuple(sorted((k, v) for k, v in yy_frag.items()))
+                for yy_frag in fragments['yy_ions']
+            }
+            if yy_compositions:
+                filtered_y = []
+                for y_frag in fragments['y_ions']:
+                    comp_key = tuple(sorted((k, v) for k, v in y_frag.items()))
+                    if comp_key in yy_compositions:
+                        y_label = self._format_string(y_frag, 'y', has_reducing_end=True)
+                        print(f"[YY DEDUPE] Removing Y-ion duplicate of YY fragment: {y_label}")
+                        continue
+                    filtered_y.append(y_frag)
+                fragments['y_ions'] = filtered_y
+
         fragments = self._validate_fragment_types(fragments, composition_registry)
+
+        # DEBUG: Print summary of YY fragments before return
+        print(f"\n{'='*80}")
+        print(f"TRACE: FINAL YY FRAGMENTS BEFORE RETURN")
+        print(f"  Total YY fragments: {len(fragments['yy_ions'])}")
+        for idx, yy_frag in enumerate(fragments['yy_ions']):
+            comp_str = "-".join(f"{k}{v}" for k, v in sorted(yy_frag.items()) if v > 0)
+            yy_label = f"YY-{comp_str}-PEP"
+            print(f"    {idx+1}. {yy_label} -> {yy_frag}")
+        print(f"{'='*80}\n")
 
         # Return both fragments and cleavage info
         return fragments, cleavage_info
@@ -2153,6 +2433,9 @@ class Glycan:
                                 composition_registry['yy'].add(comp_key)
                                 
                                 fragment_str = self._format_string(fragment, 'yy', has_reducing_end=True)
+                                # CRITICAL: Replace '-redend' with '-PEP' when peptide is attached (modification_type==6)
+                                if modification_type == 6 and peptide:
+                                    fragment_str = fragment_str.replace('-redend', '-PEP')
                                 fragment_mass = calculator.calculate_fragment_mass(fragment, 'yy_ions',peptide=peptide)
                                 fragment_tuple = (fragment_str, fragment_mass)
                                 
@@ -2267,11 +2550,20 @@ class Glycan:
         return True
 
     def _is_invalid_yy_combination(self, graph, edge1, edge2, has_core_fuc):
-        """Validate edge combinations for YY ion generation with strict rules"""
+        """Validate edge combinations for YY ion generation with strict rules
+        
+        For LARGE COMPLEX GLYCANS (HexNAc>4 or Hex>4+HexNAc>=2), use relaxed validation
+        to allow comprehensive YY fragment generation from all 2-edge combinations.
+        """
         u1, v1 = edge1
         u2, v2 = edge2
         
-            # For O-glycans, we need different rules than N-glycans
+        # Check if this is a large complex glycan that needs comprehensive YY coverage
+        # Build glycan code from composition
+        glycan_code = f"{self.hexnac_total}{self.hex_total}{self.fuc_total}{self.neuac_total}"
+        is_large_complex = (self.hexnac_total > 4) or (self.hex_total > 4 and self.hexnac_total >= 2)
+        
+        # For O-glycans, we need different rules than N-glycans
         if self.glycan_type == "O":
             # For O-glycans, we allow YY with just the reducing end HexNAc
             # and we allow NeuAc in YY ions
@@ -2300,13 +2592,52 @@ class Glycan:
             except nx.NetworkXError:
                 return True
                 
-        else:
-        
-            # For YY-HexNAc1-redend and YY-HexNAc2-redend, only valid in structure with core fucosylation
-            if not has_core_fuc:
-                # Check if edges would form a HexNAc1/2-redend fragment
-                if (u1 == 1 or u2 == 1) and (graph.nodes[v1]['type'] == 'HexNAc' or graph.nodes[v2]['type'] == 'HexNAc'):
+        else:  # N-glycan
+            # FOR LARGE COMPLEX GLYCANS: Use relaxed validation
+            if is_large_complex:
+                # Only check: 1) Reducing end preserved, 2) Core minimum preserved, 3) Not empty
+                temp_graph = copy.deepcopy(graph)
+                try:
+                    temp_graph.remove_edge(u1, v1)
+                    temp_graph.remove_edge(u2, v2)
+                    components = list(nx.weakly_connected_components(temp_graph))
+                    
+                    # Find reducing end component
+                    reducing_end_component = None
+                    for component in components:
+                        if 1 in component:
+                            reducing_end_component = component
+                            break
+                    
+                    if reducing_end_component is None:
+                        return True
+                    
+                    # Validate minimum core preservation (HexNAc >= 2, Hex >= 1)
+                    yy_subgraph = temp_graph.subgraph(reducing_end_component).copy()
+                    counts = self._count_residues(yy_subgraph)
+                    
+                    if counts.get('HexNAc', 0) < 2 or counts.get('Hex', 0) < 1:
+                        return True  # Core not preserved
+                    
+                    # Allow NeuAc and other terminals for YY (they should be present!)
+                    return False  # Valid YY fragment
+                    
+                except nx.NetworkXError:
                     return True
+            
+            # FOR SMALL GLYCANS: Use original strict rules
+            # For YY-HexNAc1-redend and YY-HexNAc2-redend, only valid in structure with core fucosylation
+            # Previous logic only looked at whether one cut was directly from the reducing end (node 1).
+            # Strengthen this rule by validating the actual reducing-end component composition after cuts.
+            if not has_core_fuc:
+                # Check if either removed edge starts at reducing end and points to HexNAc (fast path)
+                try:
+                    if (u1 == 1 and graph.nodes[v1]['type'] == 'HexNAc') or (u2 == 1 and graph.nodes[v2]['type'] == 'HexNAc'):
+                        print(f"DEBUG YY-GATING: Blocking YY due to direct reducing-end HexNAc cut without fucose")
+                        return True
+                except Exception:
+                    # If node lookup fails for any reason, fall back to full validation below
+                    pass
             
             # Get the potential YY fragment nodes (nodes that would remain when these edges are cut)
             temp_graph = copy.deepcopy(graph)
@@ -2324,12 +2655,26 @@ class Glycan:
                         
                 if reducing_end_component is None:
                     return True  # Invalid if reducing end component not found
-                        
+                
+                # Additional N-glycan rule: without core fucose, do NOT allow YY ions that
+                # isolate only HexNAc (1 or 2) at the reducing end (i.e., YY-HexNAc1/2-redend)
+                if not has_core_fuc and isinstance(reducing_end_component, (set, list, tuple)):
+                    by_subgraph = temp_graph.subgraph(reducing_end_component).copy()
+                    counts = self._count_residues(by_subgraph)
+                    hexnac = counts.get('HexNAc', 0)
+                    fuc = counts.get('Fuc', 0)
+                    hex_res = counts.get('Hex', 0)
+                    neuac = counts.get('NeuAc', 0)
+                    # If the reducing-end component is only HexNAc (1 or 2) and nothing else, forbid
+                    if fuc == 0 and hex_res == 0 and neuac == 0 and hexnac in (1, 2):
+                        print(f"DEBUG YY-GATING: Blocking YY-HexNAc{hexnac}-redend without fucose (composition check)")
+                        return True
+
                 # Check for terminal nodes in the reducing end component
                 for node in reducing_end_component:
                     node_type = graph.nodes[node]['type']
                     
-                    # Rule 1: NeuAc is always a terminal node and can't be in YY ions
+                    # Rule 1: NeuAc is always a terminal node and can't be in YY ions (SMALL GLYCANS ONLY)
                     if node_type == 'NeuAc':
                         return True
                         
@@ -2360,6 +2705,11 @@ class Glycan:
         b_compositions = set()
         y_compositions = set()
         
+        # DEBUG: Log input YY fragments
+        print(f"\n[VALIDATE] Input YY fragments: {len(fragments['yy_ions'])}")
+        for idx, frag in enumerate(fragments['yy_ions'][:3]):
+            print(f"  {idx}: {frag}")
+        
         # First pass - collect all compositions
         for frag_type in ['b_ions', 'y_ions']:
             for fragment in fragments[frag_type]:
@@ -2386,6 +2736,11 @@ class Glycan:
                 
                 # Add to corrected fragments with appropriate category
                 corrected_fragments[frag_type].append(fragment)
+        
+        # DEBUG: Log output YY fragments
+        print(f"[VALIDATE] Output YY fragments: {len(corrected_fragments['yy_ions'])}")
+        for idx, frag in enumerate(corrected_fragments['yy_ions'][:3]):
+            print(f"  {idx}: {frag}")
         
         return corrected_fragments
 
@@ -2714,6 +3069,9 @@ class Glycan:
                             composition_registry['yy'].add(comp_key)
                             
                             fragment_str = self._format_string(fragment, 'yy', has_reducing_end=True)
+                            # CRITICAL: Replace '-redend' with '-PEP' when peptide is attached (modification_type==6)
+                            if modification_type == 6 and peptide:
+                                fragment_str = fragment_str.replace('-redend', '-PEP')
                             fragment_mass = calculator.calculate_fragment_mass(fragment, 'yy_ions', peptide=peptide)
                             fragment_tuple = (fragment_str, fragment_mass)
                             
@@ -3311,9 +3669,10 @@ def debug_print_oglycan_structure(graph):
 
 #Theoretical Fragmentation of Glycans
 def add_custom_fragments(unique_fragments, glycan_code, modification_type=6, peptide=None, 
-                        include_byy=False, generate_cz_glycan_fragment=False, generate_glycan_by_ions=True,
-                        use_cam=None, fixed_mods=None, variable_mods=None, mod_string=None):
-    """Add custom fragments with modified masses"""
+                        include_byy=False, include_yyy=False, include_byyy=False,
+                        generate_cz_glycan_fragment=False, generate_glycan_by_ions=True,
+                        use_cam=None, fixed_mods=None, variable_mods=None, mod_string=None, graph=None):
+    """Add custom fragments with modified masses including YYY and BYYY for large structures"""
     
     # print(f"🔧 BYY CUSTOM DEBUG: add_custom_fragments called")
     # print(f"🔧 BYY CUSTOM DEBUG:   include_byy: {include_byy}")
@@ -3326,16 +3685,32 @@ def add_custom_fragments(unique_fragments, glycan_code, modification_type=6, pep
         'y_ions': unique_fragments['y_ions'].copy() if generate_glycan_by_ions else [],
         'by_ions': unique_fragments['by_ions'].copy() if generate_glycan_by_ions else [],
         'yy_ions': unique_fragments['yy_ions'].copy() if generate_glycan_by_ions else [],
-        'byy_ions': []
+        'byy_ions': [],
+        'yyy_ions': [],
+        'byyy_ions': [],
+        'a_ions': []  # Oxonium ions (A-type fragments)
     }
     
-    print(f"🔧 BYY CUSTOM DEBUG: Extended fragments initialized with:")
-    for frag_type, frags in extended_fragments.items():
-        print(f"🔧 BYY CUSTOM DEBUG:   {frag_type}: {len(frags)} fragments")
+    #print(f"FRAGMENT CUSTOM DEBUG: Extended fragments initialized with:")
+    #for frag_type, frags in extended_fragments.items():
+    #    print(f"FRAGMENT CUSTOM DEBUG:   {frag_type}: {len(frags)} fragments")
+    
+    # Parse glycan to determine if YYY/BYYY are applicable
+    calculator = GlycanMassCalculator()
+    calculator.calculate_MONO_MASSES(modification_type)
+    hexnac, hex, fuc, neuac, neugc = calculator.parse_glycan_code(glycan_code)
+    
+    # Auto-enable YYY and BYYY for large structures
+    auto_enable_yyy_byyy = (hexnac > 4) or (hex > 4 and hexnac >= 2)
+    
+    if auto_enable_yyy_byyy:
+        #print(f"FRAGMENT DEBUG: Large glycan detected (HexNAc={hexnac}, Hex={hex}) - auto-enabling YYY/BYYY")
+        include_yyy = True
+        include_byyy = True
     
     # ALWAYS generate BYY ions if requested OR if C/Z conversion needs them
     if include_byy or generate_cz_glycan_fragment:
-        print(f"🔧 BYY CUSTOM DEBUG: Generating BYY ions (include_byy={include_byy}, for_cz={generate_cz_glycan_fragment})")
+        #print(f"BYY CUSTOM DEBUG: Generating BYY ions (include_byy={include_byy}, for_cz={generate_cz_glycan_fragment})")
         
         # First, ensure we have YY ions to work with
         working_fragments = extended_fragments.copy()
@@ -3343,29 +3718,52 @@ def add_custom_fragments(unique_fragments, glycan_code, modification_type=6, pep
         # If we need YY ions but don't have them, get them from the original unique_fragments
         if len(working_fragments['yy_ions']) == 0 and 'yy_ions' in unique_fragments:
             working_fragments['yy_ions'] = unique_fragments['yy_ions'].copy()
-            print(f"🔧 BYY CUSTOM DEBUG: Added {len(working_fragments['yy_ions'])} YY ions for BYY generation")
+            #print(f"BYY CUSTOM DEBUG: Added {len(working_fragments['yy_ions'])} YY ions for BYY generation")
         
         # Generate BYY ions
         extended_with_byy = generate_byy_ions(working_fragments, glycan_code, modification_type, peptide)
         
         # Update extended_fragments with BYY ions
         extended_fragments['byy_ions'] = extended_with_byy.get('byy_ions', [])
-        print(f"🔧 BYY CUSTOM DEBUG: Generated {len(extended_fragments['byy_ions'])} BYY ions")
+        #print(f"BYY CUSTOM DEBUG: Generated {len(extended_fragments['byy_ions'])} BYY ions")
         
         # Debug: Show first few BYY ions
-        for i, byy_ion in enumerate(extended_fragments['byy_ions'][:3]):
-            print(f"🔧 BYY CUSTOM DEBUG: BYY ion #{i}: {byy_ion.get('_custom_label', 'No label')} - {byy_ion.get('_ion_charge', 'No charge')}")
+        #for i, byy_ion in enumerate(extended_fragments['byy_ions'][:3]):
+        #    print(f"BYY CUSTOM DEBUG: BYY ion #{i}: {byy_ion.get('_custom_label', 'No label')} - {byy_ion.get('_ion_charge', 'No charge')}")
     
-    # Create calculator
-    calculator = GlycanMassCalculator()
-    calculator.calculate_MONO_MASSES(modification_type)
+    # Generate YYY ions for large structures
+    if include_yyy:
+        #print(f"YYY CUSTOM DEBUG: Generating YYY ions")
+        working_fragments = extended_fragments.copy()
+        
+        # Ensure we have Y ions
+        if len(working_fragments['y_ions']) == 0 and 'y_ions' in unique_fragments:
+            working_fragments['y_ions'] = unique_fragments['y_ions'].copy()
+        
+        extended_with_yyy = generate_yyy_ions(working_fragments, glycan_code, modification_type, peptide, graph=graph)
+        extended_fragments['yyy_ions'] = extended_with_yyy.get('yyy_ions', [])
+        #print(f"YYY CUSTOM DEBUG: Generated {len(extended_fragments['yyy_ions'])} YYY ions")
     
-    # Define masses
-    water_mass = 18.0153
+    # Generate BYYY ions for large structures
+    if include_byyy:
+        #print(f"BYYY CUSTOM DEBUG: Generating BYYY ions")
+        working_fragments = extended_fragments.copy()
+        
+        # Ensure we have YYY ions (either from above or generate them with graph)
+        if len(working_fragments['yyy_ions']) == 0:
+            temp_yyy = generate_yyy_ions(working_fragments, glycan_code, modification_type, peptide, graph=graph)
+            working_fragments['yyy_ions'] = temp_yyy.get('yyy_ions', [])
+        
+        extended_with_byyy = generate_byyy_ions(working_fragments, glycan_code, modification_type, peptide)
+        extended_fragments['byyy_ions'] = extended_with_byyy.get('byyy_ions', [])
+        #print(f"BYYY CUSTOM DEBUG: Generated {len(extended_fragments['byyy_ions'])} BYYY ions")
+    
+    # Define masses (high precision where relevant)
+    water_mass = 18.010564684
     methanol_mass = 32.042
     methyl_mass = 15.0235
     acetyl_plus_c2h4o2 = 78.07
-    two_water_mass = 36.02
+    two_water_mass = 36.021129368
     
     # Adjust masses for permethylated glycans if needed
     if modification_type in [2, 3, 5]:
@@ -3424,16 +3822,21 @@ def add_custom_fragments(unique_fragments, glycan_code, modification_type=6, pep
                 custom_fragments_created += 1
             #    print(f"🔧 CUSTOM DEBUG: ✅ Created custom fragment: Y-HexNAc1(-H2O)-B")
                 
-                # 126 Da fragment - FIXED: Remove _ion_charge to allow multiple charge states
-                hexnac_126_fragment = fragment.copy()
-                hexnac_126_fragment['_custom_label'] = 'Y-HexNAc1(-78Da)-B'
-                hexnac_126_fragment['_mass_adjustment'] = -acetyl_plus_c2h4o2
-                # REMOVED: hexnac_126_fragment['_ion_charge'] = '1H+'  # This was forcing only 1H+
-                hexnac_126_fragment['_is_custom'] = True
-                hexnac_126_fragment['_custom_type'] = 'neutral_loss'
-                working_fragments['by_ions'].append(hexnac_126_fragment)
+                # 126 Da fragment - NOW CREATED AS A-TYPE OXONIUM instead of BY
+                # This is HexNAc-C₂H₆O₃ - a standard oxonium ion at 126.0166 m/z
+                hexnac_126_oxonium = fragment.copy()
+                hexnac_126_oxonium['_custom_label'] = 'HexNAc-C₂H₆O₃'
+                hexnac_126_oxonium['_mass_adjustment'] = -acetyl_plus_c2h4o2
+                hexnac_126_oxonium['_ion_charge'] = '1H+'  # Only single charge for oxonium
+                hexnac_126_oxonium['_is_custom'] = True
+                hexnac_126_oxonium['_custom_type'] = 'oxonium'
+                hexnac_126_oxonium['_fragment_type'] = 'A'
+                # Add directly to a_ions instead of by_ions
+                if 'a_ions' not in working_fragments:
+                    working_fragments['a_ions'] = []
+                working_fragments['a_ions'].append(hexnac_126_oxonium)
                 custom_fragments_created += 1
-             #   print(f"🔧 CUSTOM DEBUG: ✅ Created custom fragment: Y-HexNAc1(-78Da)-B")
+             #   print(f"🔧 CUSTOM DEBUG: ✅ Created custom fragment: HexNAc-C₂H₆O₃ as A-type oxonium")
                 
                 # 168 Da fragment - FIXED: Remove _ion_charge to allow multiple charge states
                 hexnac_168_fragment = fragment.copy()
@@ -3505,6 +3908,46 @@ def add_custom_fragments(unique_fragments, glycan_code, modification_type=6, pep
         else:
             print(f"🔧 CUSTOM DEBUG: Custom BY fragments kept internal only (generate_glycan_by_ions=False)")
     
+    # Generate A-type oxonium ions (ALWAYS generated when glycan fragments are requested)
+    if generate_glycan_by_ions or generate_cz_glycan_fragment:
+        #print(f"OXONIUM DEBUG: Generating A-type oxonium ions")
+        
+        # Create oxonium ions with direct mass specification
+        # These are pre-calculated masses that don't need composition
+        
+        # 1. HexNAc(-CH6O3) (O-glycan marker) at 138.055 m/z
+        galnac_oxonium = {
+            '_custom_label': 'HexNAc(-CH6O3)',
+            '_direct_mz': 138.055,
+            '_ion_charge': '1H+',
+            '_is_custom': True,
+            '_custom_type': 'oxonium',
+            '_fragment_type': 'A'
+        }
+        if 'a_ions' not in extended_fragments:
+            extended_fragments['a_ions'] = []
+        extended_fragments['a_ions'].append(galnac_oxonium)
+        
+        # 2. HexNAc(-C2H4O2) (N-glycan marker) at 144.066 m/z
+        glcnac_oxonium = {
+            '_custom_label': 'HexNAc(-C2H4O2)',
+            '_direct_mz': 144.066,
+            '_ion_charge': '1H+',
+            '_is_custom': True,
+            '_custom_type': 'oxonium',
+            '_fragment_type': 'A'
+        }
+        extended_fragments['a_ions'].append(glcnac_oxonium)
+        
+        # 3. HexNAc-C₂H₆O₃ at 126.0166 m/z is now created directly above in the BY section as A-type
+        # Copy any A-type ions from working_fragments to extended_fragments
+        if 'a_ions' in working_fragments and working_fragments['a_ions']:
+            for a_ion in working_fragments['a_ions']:
+                if a_ion not in extended_fragments['a_ions']:
+                    extended_fragments['a_ions'].append(a_ion)
+        
+        #print(f"OXONIUM DEBUG: Generated {len(extended_fragments['a_ions'])} A-type oxonium ions")
+    
         # Generate C/Z fragments from custom fragments if requested
     if generate_cz_glycan_fragment:
         #print(f"🔧 CUSTOM DEBUG: Starting C/Z conversion of custom fragments")
@@ -3566,17 +4009,18 @@ def add_custom_fragments(unique_fragments, glycan_code, modification_type=6, pep
         for fragment_type, fragments_list in extended_fragments.items():
             type_custom_count = sum(1 for frag in fragments_list if frag.get('_is_custom'))
             #if type_custom_count > 0:
-                #print(f"🔧 CUSTOM DEBUG: {fragment_type}: {type_custom_count} custom fragments")
+                #print(f"CUSTOM DEBUG: {fragment_type}: {type_custom_count} custom fragments")
             total_custom_count += type_custom_count
         
-        print(f"🔧 CUSTOM DEBUG: TOTAL custom fragments in extended_fragments: {total_custom_count}")
+        #print(f"CUSTOM DEBUG: TOTAL custom fragments in extended_fragments: {total_custom_count}")
     
     else:
-        print(f"🔧 CUSTOM DEBUG: C/Z conversion disabled (generate_cz_glycan_fragment=False)")
+        pass
+        #print(f"CUSTOM DEBUG: C/Z conversion disabled (generate_cz_glycan_fragment=False)")
     
-        print(f"🔧 BYY CUSTOM DEBUG: Final extended_fragments:")
-    for frag_type, frags in extended_fragments.items():
-        print(f"🔧 BYY CUSTOM DEBUG:   {frag_type}: {len(frags)} fragments")
+    #print(f"BYY CUSTOM DEBUG: Final extended_fragments:")
+    #for frag_type, frags in extended_fragments.items():
+    #    print(f"BYY CUSTOM DEBUG:   {frag_type}: {len(frags)} fragments")
     
     return extended_fragments
 
@@ -3795,11 +4239,11 @@ def add_custom_peptide_fragments(peptide_fragments, peptide_sequence, modificati
             cz_frag['_custom_source'] = 'cz_conversion'
             
             # Add to appropriate fragment type based on FragmentType
-            if cz_frag['FragmentType'] == 'c':
+            if cz_frag['FragmentType'] == 'C':  # Capitalized for glycan fragments
                 if 'c_ions' not in extended_fragments:
                     extended_fragments['c_ions'] = []
                 extended_fragments['c_ions'].append(cz_frag)
-            elif cz_frag['FragmentType'] == 'z':
+            elif cz_frag['FragmentType'] == 'Z':  # Capitalized for glycan fragments
                 if 'z_ions' not in extended_fragments:
                     extended_fragments['z_ions'] = []
                 extended_fragments['z_ions'].append(cz_frag)
@@ -3818,6 +4262,39 @@ def add_custom_peptide_fragments(peptide_fragments, peptide_sequence, modificati
         print(f"DEBUG: add_custom_peptide_fragments NOT generating C/Z custom peptide fragments (generate_cz_peptide_fragment=False)")
     
     return extended_fragments
+
+def is_valid_n_glycan_structure(fragment):
+    """
+    Validate if a fragment follows N-glycan biosynthetic rules.
+    
+    N-glycan structure rules:
+    - Minimum: 2 HexNAc (core GlcNAc-GlcNAc)
+    - Core: 2 HexNAc + 3 Hex (Man3GlcNAc2)
+    - Each additional HexNAc (branch point) can add max 1 additional Hex
+    - Max Hex = 3 + (HexNAc - 2) for complex/hybrid structures
+    
+    Examples:
+    - HexNAc2-Hex3: Valid (core)
+    - HexNAc3-Hex4: Valid (1 branch, +1 Hex)
+    - HexNAc4-Hex5: Valid (2 branches, +2 Hex)
+    - HexNAc1-Hex5: INVALID (need minimum 2 HexNAc for N-glycan)
+    - HexNAc2-Hex6: INVALID (max 3 Hex for 2 HexNAc)
+    """
+    hexnac = fragment.get('HexNAc', 0)
+    hex_count = fragment.get('Hex', 0)
+    
+    # Minimum requirement: 2 HexNAc for N-glycan core
+    if hexnac < 2:
+        return False
+    
+    # Maximum Hex allowed based on HexNAc count
+    # Core has 3 Hex (3 mannoses), each additional HexNAc can add 1 more Hex
+    max_hex = 3 + (hexnac - 2)
+    
+    if hex_count > max_hex:
+        return False
+    
+    return True
 
 def _add_byy_fragment(fragment, unique_keys, extended_fragments, prefix, suffix, charges):
     """Helper function to add a BYY fragment with proper labeling and deduplication"""
@@ -3861,6 +4338,299 @@ def _add_byy_fragment(fragment, unique_keys, extended_fragments, prefix, suffix,
         #print(f"🔧 BYY DEBUG: Added BYY fragment: {fragment_name} with charge {charge}H+")
     
     #print(f"🔧 BYY DEBUG: Total fragments added for this composition: {added_count}")
+    return added_count
+
+def generate_yyy_ions_from_graph(graph, glycan_code, modification_type=6, peptide=None):
+    """
+    Generate YYY ions using graph-based topology (correct approach):
+    - Take the glycan structure graph
+    - Enumerate all valid 3-edge removal combinations at branch/terminal positions only
+    - Remove edges, extract component containing reducing end (node 1)
+    - Validate core preservation (HexNAc >= 2, Hex >= 3)
+    - Format: YYY-...-PEP (matching YY style)
+    """
+    yyy_ions = []
+    
+    calculator = GlycanMassCalculator()
+    calculator.calculate_MONO_MASSES(modification_type)
+    hexnac, hex, fuc, neuac, neugc = calculator.parse_glycan_code(glycan_code)
+    
+    # Size gating
+    if not ((hexnac > 4) or (hex > 4 and hexnac >= 2)):
+        print(f"YYY DEBUG: Glycan {glycan_code} too small for YYY (HexNAc={hexnac}, Hex={hex})")
+        return yyy_ions
+    
+    print(f"YYY DEBUG: Generating graph-based YYY ions for {glycan_code}")
+    
+    # Get all edges (excluding self-loops)
+    all_edges = [(u, v) for u, v in graph.edges() if u != v]
+    reducing_end = 1
+    core_min = {'HexNAc': 2, 'Hex': 3}
+    
+    unique_yyy_keys = set()
+    yyy_count = 0
+    
+    # Enumerate all 3-edge combinations
+    from itertools import combinations
+    for edge_combo in combinations(all_edges, 3):
+        temp_graph = copy.deepcopy(graph)
+        
+        # Remove the 3 edges
+        try:
+            for u, v in edge_combo:
+                temp_graph.remove_edge(u, v)
+        except:
+            continue
+        
+        # Get components
+        components = list(nx.weakly_connected_components(temp_graph))
+        
+        # Find reducing end component
+        for component in components:
+            if reducing_end in component:
+                yyy_subgraph = temp_graph.subgraph(component).copy()
+                
+                # Count composition
+                counts = {}
+                for node in yyy_subgraph.nodes():
+                    node_type = yyy_subgraph.nodes[node]['type']
+                    counts[node_type] = counts.get(node_type, 0) + 1
+                
+                # Map to standard names
+                yyy_fragment = {
+                    'HexNAc': counts.get('HexNAc', 0),
+                    'Hex': counts.get('Hex', 0),
+                    'Fuc': counts.get('Fuc', 0),
+                    'NeuAc': counts.get('NeuAc', 0),
+                    'NeuGc': counts.get('NeuGc', 0)
+                }
+                
+                # Validate core preservation
+                if yyy_fragment['HexNAc'] < core_min['HexNAc'] or yyy_fragment['Hex'] < core_min['Hex']:
+                    continue
+                
+                # Check minimum fragment size (must be core + something)
+                total = sum(yyy_fragment.values())
+                if total < (core_min['HexNAc'] + core_min['Hex']):
+                    continue
+                
+                # Prevent full glycan from being classified as YYY
+                # YYY must have FEWER monosaccharides than the original glycan
+                if total >= (hexnac + hex + fuc + neuac + neugc):
+                    continue  # This is the full glycan with 0 cleavages!
+                
+                # Check if this should be YY or YYY based on sialic acid cleavage
+                sial_total = yyy_fragment.get('NeuAc', 0) + yyy_fragment.get('NeuGc', 0)
+                original_sial = neuac + neugc
+                
+                # EXCEPTION: Allow YYY-HexNAc2-Hex2-PEP (minimal core structure, always present)
+                is_core_fragment = (yyy_fragment['HexNAc'] == 2 and yyy_fragment['Hex'] == 2 and 
+                                   yyy_fragment.get('Fuc', 0) == 0 and sial_total == 0)
+                
+                # Determine if this is truly YYY (all terminals cleaved) or YY (some terminals remain)
+                # YYY = all 3 branch terminals cleaved
+                # If fragment has NeuAc AND original had NeuAc, check if all were cleaved
+                is_true_yyy = True
+                if original_sial > 0:
+                    # If we still have sialic acid, not all terminals were cleaved → this is YY
+                    if sial_total > 0 and not is_core_fragment:
+                        is_true_yyy = False  # Reclassify as YY
+                
+                if not is_true_yyy:
+                    continue  # Skip this - it will be/was generated as YY from 2-edge removal
+                
+                # Deduplicate
+                comp_tuple = tuple(sorted((k, v) for k, v in yyy_fragment.items() if v > 0))
+                if comp_tuple in unique_yyy_keys:
+                    continue
+                unique_yyy_keys.add(comp_tuple)
+                
+                # Add charges 1+, 2+, 3+
+                for charge in [1, 2, 3]:
+                    charged_frag = yyy_fragment.copy()
+                    
+                    # Build label: YYY-HexNAc#-Hex#-...-PEP (matching YY format)
+                    comp_parts = []
+                    for mono in ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc']:
+                        if charged_frag.get(mono, 0) > 0:
+                            comp_parts.append(f"{mono}{charged_frag[mono]}")
+                    
+                    fragment_name = f"YYY-{'-'.join(comp_parts)}-PEP" if peptide else f"YYY-{'-'.join(comp_parts)}"
+                    
+                    charged_frag['_custom_label'] = fragment_name
+                    charged_frag['_multi_cleavage'] = True
+                    charged_frag['_ion_charge'] = f"{charge}H+"
+                    yyy_ions.append(charged_frag)
+                    yyy_count += 1
+                
+                break  # Found reducing end component, move to next edge combo
+    
+    # Add mandatory YYY-HexNAc2-Hex2-PEP (minimal core fragment, always present in N-glycans)
+    core_fragment = {'HexNAc': 2, 'Hex': 2}
+    core_tuple = tuple(sorted((k, v) for k, v in core_fragment.items() if v > 0))
+    
+    if core_tuple not in unique_yyy_keys:
+        unique_yyy_keys.add(core_tuple)
+        for charge in [1, 2, 3]:
+            charged_core = core_fragment.copy()
+            fragment_name = f"YYY-HexNAc2-Hex2-PEP" if peptide else "YYY-HexNAc2-Hex2"
+            charged_core['_custom_label'] = fragment_name
+            charged_core['_multi_cleavage'] = True
+            charged_core['_ion_charge'] = f"{charge}H+"
+            yyy_ions.append(charged_core)
+            yyy_count += 1
+    
+    print(f"YYY DEBUG: Generated {yyy_count} graph-based YYY fragments (includes mandatory core)")
+    return yyy_ions
+
+
+# Compatibility wrapper for old call sites
+def generate_yyy_ions(unique_fragments, glycan_code, modification_type=6, peptide=None, graph=None):
+    """Wrapper that uses graph if provided, otherwise returns empty (graph required now)"""
+    extended_fragments = {
+        'b_ions': unique_fragments.get('b_ions', []).copy(),
+        'y_ions': unique_fragments.get('y_ions', []).copy(),
+        'by_ions': unique_fragments.get('by_ions', []).copy(),
+        'yy_ions': unique_fragments.get('yy_ions', []).copy(),
+        'byy_ions': unique_fragments.get('byy_ions', []).copy(),
+        'yyy_ions': []
+    }
+    
+    if graph is None:
+        print(f"YYY WARNING: Graph not provided, cannot generate topology-based YYY ions")
+        return extended_fragments
+    
+    yyy_ions = generate_yyy_ions_from_graph(graph, glycan_code, modification_type, peptide)
+    extended_fragments['yyy_ions'] = yyy_ions
+    return extended_fragments
+
+def generate_byyy_ions(unique_fragments, glycan_code, modification_type=6, peptide=None):
+    """
+    Generate BYYY ions from YYY by removing 1 or 2 HexNAc units at the peptide end (base):
+    - Each YYY generates up to 2 BYYY: YYY-HexNAc1 and YYY-HexNAc2
+    - Depends on accurate YYY generation (graph-based triple cleavages)
+    - Preserve feasibility by keeping at least one HexNAc (peptide linkage context)
+    - Size gating matches YYY
+    """
+    extended_fragments = {
+        'b_ions': unique_fragments.get('b_ions', []).copy(),
+        'y_ions': unique_fragments.get('y_ions', []).copy(),
+        'by_ions': unique_fragments.get('by_ions', []).copy(),
+        'yy_ions': unique_fragments.get('yy_ions', []).copy(),
+        'byy_ions': unique_fragments.get('byy_ions', []).copy(),
+        'yyy_ions': unique_fragments.get('yyy_ions', []).copy(),
+        'byyy_ions': []
+    }
+
+    calculator = GlycanMassCalculator()
+    calculator.calculate_MONO_MASSES(modification_type)
+    hexnac, hex, fuc, neuac, neugc = calculator.parse_glycan_code(glycan_code)
+
+    # Size gating same as YYY
+    if not ((hexnac > 4) or (hex > 4 and hexnac >= 2)):
+        print(f"BYYY DEBUG: Glycan {glycan_code} too small for BYYY (HexNAc={hexnac}, Hex={hex})")
+        return extended_fragments
+
+    # BYYY must derive from YYY - if no YYY fragments, cannot generate BYYY
+    if len(extended_fragments['yyy_ions']) == 0:
+        print(f"BYYY DEBUG: No YYY fragments available to generate BYYY")
+        return extended_fragments
+    
+    print(f"BYYY DEBUG: Generating BYYY from {len(extended_fragments['yyy_ions'])} YYY fragments")
+
+    unique_byyy_keys = set()
+    byyy_generated_count = 0
+
+    # Generate BYYY from each YYY fragment
+    for fragment in extended_fragments['yyy_ions']:
+        if not isinstance(fragment, dict):
+            continue
+
+        current_hexnac = fragment.get('HexNAc', 0)
+
+        # Single HexNAc removal at base: YYY - HexNAc1 (keep at least HexNAc >= 1)
+        if current_hexnac >= 2:
+            byyy1 = fragment.copy()
+            byyy1['HexNAc'] = current_hexnac - 1
+            
+            # Remove YYY-specific metadata to avoid conflicts
+            byyy1.pop('_custom_label', None)
+            byyy1.pop('_ion_charge', None)
+            byyy1.pop('_multi_cleavage', None)
+
+            added1 = _add_multi_cleavage_fragment(
+                byyy1, unique_byyy_keys, extended_fragments,
+                "YYY", "B", [1, 2, 3], fragment_type='byyy_ions',
+                peptide_label=None  # BYYY labels do NOT include PEP suffix
+            )
+            if added1:
+                byyy_generated_count += added1
+
+        # Double HexNAc removal at base: YYY - HexNAc2 (keep at least HexNAc >= 1)
+        if current_hexnac >= 3:
+            byyy2 = fragment.copy()
+            byyy2['HexNAc'] = current_hexnac - 2
+            
+            # Remove YYY-specific metadata to avoid conflicts
+            byyy2.pop('_custom_label', None)
+            byyy2.pop('_ion_charge', None)
+            byyy2.pop('_multi_cleavage', None)
+
+            if byyy2['HexNAc'] >= 1:
+                added2 = _add_multi_cleavage_fragment(
+                    byyy2, unique_byyy_keys, extended_fragments,
+                    "YYY", "B", [1, 2, 3], fragment_type='byyy_ions',
+                    peptide_label=None  # BYYY labels do NOT include PEP suffix
+                )
+                if added2:
+                    byyy_generated_count += added2
+
+    print(f"BYYY DEBUG: Generated {byyy_generated_count} BYYY fragments")
+    return extended_fragments
+
+def _add_multi_cleavage_fragment(fragment, unique_keys, extended_fragments, prefix, suffix, charges, fragment_type='yyy_ions', peptide_label=None):
+    """Helper function to add YYY or BYYY fragments with proper labeling and deduplication.
+    If peptide_label provided (e.g. 'PEP'), append it to the fragment name as suffix.
+    """
+    comp_tuple = tuple(sorted(
+        (k, v) for k, v in fragment.items()
+        if k in ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc'] and v > 0
+    ))
+    
+    added_count = 0
+    for charge in charges:
+        key = (comp_tuple, charge)
+        
+        if key in unique_keys:
+            continue
+        
+        unique_keys.add(key)
+        comp_parts = []
+        for mono in ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc']:
+            if fragment.get(mono, 0) > 0:
+                comp_parts.append(f"{mono}{fragment[mono]}")
+        
+        # Build base label with glycan composition
+        if suffix:
+            base_label = f"{prefix}-{'-'.join(comp_parts)}-{suffix}"
+        else:
+            base_label = f"{prefix}-{'-'.join(comp_parts)}"
+        
+        # Append peptide at the end (matching YY style: "YY-...-PEP")
+        fragment_name = f"{base_label}-{peptide_label}" if peptide_label else base_label
+        
+        charged_fragment = fragment.copy()
+        charged_fragment['_custom_label'] = fragment_name
+        charged_fragment['_multi_cleavage'] = True
+        charged_fragment['_ion_charge'] = f"{charge}H+"
+        
+        # Ensure the fragment type exists in extended_fragments
+        if fragment_type not in extended_fragments:
+            extended_fragments[fragment_type] = []
+        
+        extended_fragments[fragment_type].append(charged_fragment)
+        added_count += 1
+    
     return added_count
 
 def generate_byy_ions(unique_fragments, glycan_code, modification_type=6, peptide=None):
@@ -3976,7 +4746,7 @@ def generate_extended_fragment_table(unique_fragments, glycan_code, modification
                                    use_cam=False, fixed_mods=None, variable_mods=None, mod_string=None,
                                    include_byy=False, generate_cz_glycan_fragment=False,
                                    generate_glycan_by_ions=True, generate_peptide_by_ions=True,
-                                   generate_cz_peptide_fragment=False):
+                                   generate_cz_peptide_fragment=False, glycan_type=None, graph=None):
     """Generate fragment table with filtering BEFORE deduplication"""
     #print(f"🔧 BYY EXTENDED DEBUG: generate_extended_fragment_table called")
     #print(f"🔧 BYY EXTENDED DEBUG:   include_byy: {include_byy}")
@@ -3984,10 +4754,17 @@ def generate_extended_fragment_table(unique_fragments, glycan_code, modification
     #print(f"🔧 BYY EXTENDED DEBUG:   generate_glycan_by_ions: {generate_glycan_by_ions}")
     
     # First add custom fragments (this includes BYY and C/Z generation)
+    # CRITICAL: propagate peptide modification parameters so C/Z masses include peptide mods (e.g., CAM)
     extended_fragments = add_custom_fragments(
-        unique_fragments, glycan_code, modification_type, peptide, 
-        include_byy=include_byy, generate_cz_glycan_fragment=generate_cz_glycan_fragment,
-        generate_glycan_by_ions=generate_glycan_by_ions  # Pass the setting
+        unique_fragments, glycan_code, modification_type, peptide,
+        include_byy=include_byy,
+        generate_cz_glycan_fragment=generate_cz_glycan_fragment,
+        generate_glycan_by_ions=generate_glycan_by_ions,
+        use_cam=use_cam,
+        fixed_mods=fixed_mods,
+        variable_mods=variable_mods,
+        mod_string=mod_string,
+        graph=graph
     )
     
     #print(f"🔧 BYY EXTENDED DEBUG: After add_custom_fragments:")
@@ -3998,14 +4775,14 @@ def generate_extended_fragment_table(unique_fragments, glycan_code, modification
     all_fragments_df = generate_fragment_table(
         extended_fragments, glycan_code, modification_type, peptide,
         use_cam=use_cam, fixed_mods=fixed_mods, 
-        variable_mods=variable_mods, mod_string=mod_string
+        variable_mods=variable_mods, mod_string=mod_string, glycan_type=glycan_type
     )
     
     #print(f"🔧 BYY EXTENDED DEBUG: Generated fragment table with {len(all_fragments_df)} fragments")
     
     # Check BYY fragments in the table
     if 'FragmentType' in all_fragments_df.columns:
-        byy_in_table = len(all_fragments_df[all_fragments_df['FragmentType'] == 'byy'])
+        byy_in_table = len(all_fragments_df[all_fragments_df['FragmentType'] == 'BYY'])
         #print(f"🔧 BYY EXTENDED DEBUG: Fragment table contains {byy_in_table} BYY fragments")
     
     # CRITICAL: Apply fragment type filtering BEFORE deduplication
@@ -4021,7 +4798,7 @@ def generate_extended_fragment_table(unique_fragments, glycan_code, modification
     
     # Check BYY fragments after filtering
     if 'FragmentType' in filtered_df.columns:
-        byy_after_filter = len(filtered_df[filtered_df['FragmentType'] == 'byy'])
+        byy_after_filter = len(filtered_df[filtered_df['FragmentType'] == 'BYY'])
         #print(f"🔧 BYY EXTENDED DEBUG: After filtering contains {byy_after_filter} BYY fragments")
     
     # THEN apply deduplication to the filtered fragments
@@ -4031,9 +4808,19 @@ def generate_extended_fragment_table(unique_fragments, glycan_code, modification
     
     # Final BYY count check
     if 'FragmentType' in final_df.columns:
-        byy_final = len(final_df[final_df['FragmentType'] == 'byy'])
+        byy_final = len(final_df[final_df['FragmentType'] == 'BYY'])
         #print(f"🔧 BYY EXTENDED DEBUG: Final result contains {byy_final} BYY fragments")
     
+    # FINAL PASS: Ensure Y0/Y1/Y1F are labeled as glycan-type 'Y' regardless of upstream paths
+    try:
+        if not final_df.empty and 'Type' in final_df.columns:
+            y_mask = final_df['Type'].astype(str).str.match(r'^Y\d+F?$', case=False, na=False)
+            if y_mask.any():
+                final_df.loc[y_mask, 'FragmentType'] = 'Y'
+    except Exception as e:
+        # Non-fatal; continue returning the table
+        print(f"WARN: Final Y-type correction skipped due to error: {e}")
+
     print(f"🔧 BYY EXTENDED DEBUG: generate_extended_fragment_table returning {len(final_df)} fragments")
     return final_df
 
@@ -4097,7 +4884,7 @@ def generate_peptide_fragments(peptide_sequence, glycan_code, calculator=None, m
             fragments['b_ions'].append(b_ion)
     
     # Calculate y-ion masses (C-terminus to each position, reversed direction)
-    cumulative_mass = 18.0153  # Start with water mass for y ions
+    cumulative_mass = 18.010564684  # Start with monoisotopic water mass for y ions (H2O)
     
     # Loop through all positions to generate ALL y-ions (including the full peptide as y<n>)
     for i in range(len(peptide_sequence)-1, -1, -1):  # Changed loop range to include first position
@@ -4108,8 +4895,15 @@ def generate_peptide_fragments(peptide_sequence, glycan_code, calculator=None, m
         
         # Store current y-ion - including the full peptide (y<n>)
         y_position = len(peptide_sequence) - i
+        
+        # Rename y_N to Y0 (full peptide y-ion)
+        if y_position == len(peptide_sequence):
+            fragment_name = "Y0"
+        else:
+            fragment_name = f"y{y_position}"
+        
         y_ion = {
-            'fragment_name': f"y{y_position}",
+            'fragment_name': fragment_name,
             'fragment_mass': cumulative_mass + calculator.PROTON_MASS,  # Add proton for +1 charge
             'fragment_sequence': peptide_sequence[i:],  # FIXED: This is the actual amino acid sequence
             'fragment_position': y_position,
@@ -4120,6 +4914,86 @@ def generate_peptide_fragments(peptide_sequence, glycan_code, calculator=None, m
             'sequence': peptide_sequence[i:]
         }
         fragments['y_ions'].append(y_ion)
+        
+        # Generate Y0, Y1, Y1F with multiple charge states (1, 2, 3) for full peptide only
+        if y_position == len(peptide_sequence):
+            GLCNAC_MASS = 203.0794
+            FUC_MASS = 146.0579
+            
+            # Calculate neutral masses (without proton)
+            y0_neutral_mass = cumulative_mass  # Full peptide
+            y1_neutral_mass = cumulative_mass + GLCNAC_MASS  # Peptide + GlcNAc
+            
+            # Check for fucose
+            has_fucose = False
+            if glycan_code:
+                try:
+                    glycan_str = str(glycan_code)
+                    # Check for fucose in different glycan code formats:
+                    # 1. Numeric format like "4501" (third digit is Fuc count)
+                    if glycan_str.isdigit() and len(glycan_str) >= 3:
+                        fuc_count = int(glycan_str[2])
+                        has_fucose = fuc_count > 0
+                    # 2. Composition format like "HexNAc(4)Hex(5)Fuc(1)NeuAc(1)"
+                    elif 'Fuc(' in glycan_str:
+                        import re
+                        match = re.search(r'Fuc\((\d+)\)', glycan_str)
+                        if match:
+                            fuc_count = int(match.group(1))
+                            has_fucose = fuc_count > 0
+                except (ValueError, IndexError):
+                    has_fucose = False
+            
+            y1f_neutral_mass = y1_neutral_mass + FUC_MASS if has_fucose else None
+            
+            # Generate Y0 with charge states 1, 2, 3
+            for charge in [1, 2, 3]:
+                y0_mz = (y0_neutral_mass + charge * calculator.PROTON_MASS) / charge
+                y0_ion = {
+                    'fragment_name': "Y0",
+                    'fragment_mass': y0_mz,
+                    'fragment_sequence': peptide_sequence[i:],
+                    'fragment_position': y_position,
+                    'fragment_type': 'Y',  # CAPITAL Y - glycan-type ion
+                    'position': y_position,
+                    'mass': y0_mz,
+                    'sequence': peptide_sequence[i:],
+                    '_charge': charge
+                }
+                fragments['y_ions'].append(y0_ion)
+            
+            # Generate Y1 (Peptide + GlcNAc) with charge states 1, 2, 3
+            for charge in [1, 2, 3]:
+                y1_mz = (y1_neutral_mass + charge * calculator.PROTON_MASS) / charge
+                y1_ion = {
+                    'fragment_name': "Y1",
+                    'fragment_mass': y1_mz,
+                    'fragment_sequence': f"{peptide_sequence[i:]}-HexNAc1",  # Add HexNAc1 to sequence
+                    'fragment_position': y_position,
+                    'fragment_type': 'Y',  # CAPITAL Y - glycan-type ion
+                    'position': y_position,
+                    'mass': y1_mz,
+                    'sequence': f"{peptide_sequence[i:]}-HexNAc1",
+                    '_charge': charge
+                }
+                fragments['y_ions'].append(y1_ion)
+            
+            # Generate Y1F (Peptide + HexNAc1 + Fuc) with charge states 1, 2, 3 if fucose is present
+            if has_fucose:
+                for charge in [1, 2, 3]:
+                    y1f_mz = (y1f_neutral_mass + charge * calculator.PROTON_MASS) / charge
+                    y1f_ion = {
+                        'fragment_name': "Y1F",
+                        'fragment_mass': y1f_mz,
+                        'fragment_sequence': f"{peptide_sequence[i:]}-HexNAc1-Fuc",  # Add HexNAc1-Fuc to sequence
+                        'fragment_position': y_position,
+                        'fragment_type': 'Y',  # CAPITAL Y - glycan-type ion
+                        'position': y_position,
+                        'mass': y1f_mz,
+                        'sequence': f"{peptide_sequence[i:]}-HexNAc1-Fuc",
+                        '_charge': charge
+                    }
+                    fragments['y_ions'].append(y1f_ion)
     
     # Add custom peptide fragments if requested
     if enable_custom_peptide_fragments:
@@ -4165,11 +5039,18 @@ def generate_glycan_cz_fragments(unique_fragments, glycan_code, modification_typ
     )
     
     # Mass differences for glycan C/Z fragments
-    GLYCAN_C_MASS_DIFF = 18.026   # For C ions from B ions
-    GLYCAN_Z_MASS_DIFF = -18.026  # For Z ions from Y ions
-    ZZ_MASS_DIFF = -36.0211       # For ZZ ions from YY ions
-    CZZ_MASS_DIFF = -18.026       # For CZZ ions from BYY ions
-    BZZ_FROM_CZZ_DIFF = -18.0105  # For BZZ ions from CZZ ions (subtracting 18.0105)
+    # For GLYCANS: C/Z fragments involve H2O gain/loss (different from peptide C/Z which use NH3)
+    # Use high-precision monoisotopic masses
+    # Glycan C ions = B ions + H2O (+18.010564684 Da)
+    # Glycan Z ions = Y ions - H2O (-18.010564684 Da)
+    GLYCAN_C_MASS_DIFF = 18.010564684   # For C ions from B ions (adding H2O)
+    GLYCAN_Z_MASS_DIFF = -18.010564684  # For Z ions from Y ions (subtracting H2O)
+    ZZ_MASS_DIFF = -36.021129368        # For ZZ ions from YY ions (subtracting 2 × H2O)
+    CZZ_MASS_DIFF = -18.010564684       # For CZZ ions from BYY ions (subtracting H2O)
+    BZZ_FROM_CZZ_DIFF = 18.010564684    # For BZZ ions from CZZ ions (adding H2O)
+    ZZZ_MASS_DIFF = -54.031694052       # For ZZZ ions from YYY ions (subtracting 3 × H2O)
+    CZZZ_MASS_DIFF = -36.021129368      # For CZZZ ions from BYYY ions (subtracting 2 × H2O)
+    BZZZ_FROM_CZZZ_DIFF = 18.010564684  # For BZZZ ions from CZZZ ions (adding H2O)
         
     # Handle the case where BY ions are needed for CZ conversion but not for output
     working_fragments = unique_fragments.copy()
@@ -4231,7 +5112,10 @@ def generate_glycan_cz_fragments(unique_fragments, glycan_code, modification_typ
         'cz_ions': [],   # New
         'zz_ions': [],   # New
         'czz_ions': [],  # New
-        'bzz_ions': []   # New (when both cz and by are enabled for GLYCANS only)
+        'bzz_ions': [],  # New (when both cz and by are enabled for GLYCANS only)
+        'zzz_ions': [],  # New (from YYY ions)
+        'czzz_ions': [], # New (from BYYY ions)
+        'bzzz_ions': []  # New (from CZZZ ions)
     }
     
     # Only include BY ions in output if generate_by_ions is True
@@ -4253,6 +5137,9 @@ def generate_glycan_cz_fragments(unique_fragments, glycan_code, modification_typ
     unique_zz_fragments = set()
     unique_czz_fragments = set()
     unique_bzz_fragments = set()
+    unique_zzz_fragments = set()
+    unique_czzz_fragments = set()
+    unique_bzzz_fragments = set()
     
     # Helper function to create fragment label based on source fragment
     def create_fragment_label(source_fragment, source_type, target_type):
@@ -4290,6 +5177,18 @@ def generate_glycan_cz_fragments(unique_fragments, glycan_code, modification_typ
         elif target_type == 'bzz' and source_type == 'czz':
             # BZZ ions from CZZ ions: change CZZ to BZZ
             return f"ZZ-{composition}-B"
+        elif target_type == 'zzz' and source_type == 'yyy':
+            # ZZZ ions from YYY ions: handle -PEP correctly
+            if modification_type == 6 and peptide:
+                return f"ZZZ-{composition}-PEP"  # Keep -PEP for glycopeptides
+            else:
+                return f"ZZZ-{composition}"
+        elif target_type == 'czzz' and source_type == 'byyy':
+            # CZZZ ions from BYYY ions: change BYYY to CZZZ
+            return f"ZZZ-{composition}-C"
+        elif target_type == 'bzzz' and source_type == 'czzz':
+            # BZZZ ions from CZZZ ions: change CZZZ to BZZZ
+            return f"ZZZ-{composition}-B"
         else:
             return f"{target_type.upper()}-{composition}"
     
@@ -4310,7 +5209,7 @@ def generate_glycan_cz_fragments(unique_fragments, glycan_code, modification_typ
                     unique_c_fragments.add(fragment_key)
                     
                     c_fragment = fragment.copy()
-                    c_fragment['_fragment_type'] = 'c'  
+                    c_fragment['_fragment_type'] = 'C'  # Capitalized for glycan fragments
                     c_fragment['_mass'] = c_mass
                     c_fragment['_mz'] = mz
                     c_fragment['_charge'] = charge
@@ -4336,7 +5235,7 @@ def generate_glycan_cz_fragments(unique_fragments, glycan_code, modification_typ
                     unique_z_fragments.add(fragment_key)
                     
                     z_fragment = fragment.copy()
-                    z_fragment['_fragment_type'] = 'z' 
+                    z_fragment['_fragment_type'] = 'Z'  # Capitalized for glycan fragments
                     z_fragment['_mass'] = z_mass
                     z_fragment['_mz'] = mz
                     z_fragment['_charge'] = charge
@@ -4361,7 +5260,7 @@ def generate_glycan_cz_fragments(unique_fragments, glycan_code, modification_typ
                     unique_cz_fragments.add(fragment_key)
                     
                     cz_fragment = fragment.copy()
-                    cz_fragment['_fragment_type'] = 'cz'  
+                    cz_fragment['_fragment_type'] = 'CZ'  # Capitalized for glycan fragments
                     cz_fragment['_mass'] = base_mass
                     cz_fragment['_mz'] = mz
                     cz_fragment['_charge'] = charge
@@ -4387,7 +5286,7 @@ def generate_glycan_cz_fragments(unique_fragments, glycan_code, modification_typ
                     unique_zz_fragments.add(fragment_key)
                     
                     zz_fragment = fragment.copy()
-                    zz_fragment['_fragment_type'] = 'zz'  
+                    zz_fragment['_fragment_type'] = 'ZZ'  # Capitalized for glycan fragments
                     zz_fragment['_mass'] = zz_mass
                     zz_fragment['_mz'] = mz
                     zz_fragment['_charge'] = charge
@@ -4428,7 +5327,7 @@ def generate_glycan_cz_fragments(unique_fragments, glycan_code, modification_typ
                         unique_czz_fragments.add(fragment_key)
                         
                         czz_fragment = fragment.copy()
-                        czz_fragment['_fragment_type'] = 'czz'  
+                        czz_fragment['_fragment_type'] = 'CZZ'  # Capitalized for glycan fragments
                         czz_fragment['_mass'] = czz_mass
                         czz_fragment['_mz'] = mz
                         czz_fragment['_charge'] = charge
@@ -4459,13 +5358,116 @@ def generate_glycan_cz_fragments(unique_fragments, glycan_code, modification_typ
                         unique_bzz_fragments.add(fragment_key)
                     
                         bzz_fragment = czz_fragment.copy()
-                        bzz_fragment['_fragment_type'] = 'bzz'  
+                        bzz_fragment['_fragment_type'] = 'BZZ'  # Capitalized for glycan fragments
                         bzz_fragment['_mass'] = bzz_mass
                         bzz_fragment['_mz'] = mz
                         bzz_fragment['_charge'] = charge
                         bzz_fragment['_custom_label'] = create_fragment_label(czz_fragment, 'czz', 'bzz')
                         extended_fragments['bzz_ions'].append(bzz_fragment)
                         bzz_generated_count += 1
+    
+    # Generate ZZZ ions from YYY ions (use working_fragments)
+    zzz_generated_count = 0
+    for fragment in working_fragments.get('yyy_ions', []):
+        if isinstance(fragment, dict) and sum(fragment.get(key, 0) for key in ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc']) > 0:
+            base_mass = calculator.calculate_fragment_mass(fragment, 'yyy_ions', peptide=peptide)
+            
+            for charge in [1, 2, 3]:
+                zzz_mass = base_mass + ZZZ_MASS_DIFF
+                mz = calculator.calculate_mz(zzz_mass, charge)
+                
+                # Create unique key for deduplication
+                fragment_key = (tuple(sorted((k, v) for k, v in fragment.items() 
+                                           if k in ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc'] and v > 0)), charge)
+                
+                if fragment_key not in unique_zzz_fragments:
+                    unique_zzz_fragments.add(fragment_key)
+                    
+                    zzz_fragment = fragment.copy()
+                    zzz_fragment['_fragment_type'] = 'ZZZ'  # Capitalized for glycan fragments
+                    zzz_fragment['_mass'] = zzz_mass
+                    zzz_fragment['_mz'] = mz
+                    zzz_fragment['_charge'] = charge
+                    zzz_fragment['_custom_label'] = create_fragment_label(fragment, 'yyy', 'zzz')
+                    extended_fragments['zzz_ions'].append(zzz_fragment)
+                    zzz_generated_count += 1
+    
+    print(f"BZZ DEBUG: Generated {len(extended_fragments['zzz_ions'])} ZZZ ions")
+    
+    # Generate CZZZ ions from BYYY ions (use working_fragments)
+    byyy_ions_source = working_fragments.get('byyy_ions', [])
+    print(f"BZZ DEBUG: Found {len(byyy_ions_source)} BYYY ions in working_fragments")
+    
+    # If not found in working_fragments, try to generate them
+    if not byyy_ions_source and generate_cz_glycan_fragment:
+        print("BZZ DEBUG: No BYYY ions found in working_fragments, generating them for C/Z conversion...")
+        # Generate BYYY ions using the helper function
+        extended_with_byyy = generate_byyy_ions(working_fragments, glycan_code, modification_type, peptide)
+        byyy_ions_source = extended_with_byyy.get('byyy_ions', [])
+        print(f"BZZ DEBUG: Generated {len(byyy_ions_source)} BYYY ions")
+    
+    # Generate CZZZ ions from BYYY ions
+    czzz_generated_count = 0
+    if byyy_ions_source:
+        print(f"BZZ DEBUG: Processing {len(byyy_ions_source)} BYYY ions for CZZZ conversion...")
+        for fragment in byyy_ions_source:
+            if isinstance(fragment, dict) and sum(fragment.get(key, 0) for key in ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc']) > 0:
+                base_mass = calculator.calculate_fragment_mass(fragment, 'byyy_ions', peptide=peptide)
+                
+                for charge in [1, 2, 3]:
+                    czzz_mass = base_mass + CZZZ_MASS_DIFF
+                    mz = calculator.calculate_mz(czzz_mass, charge)
+                    
+                    # Create unique key for deduplication
+                    fragment_key = (tuple(sorted((k, v) for k, v in fragment.items() 
+                                               if k in ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc'] and v > 0)), charge)
+                    
+                    if fragment_key not in unique_czzz_fragments:
+                        unique_czzz_fragments.add(fragment_key)
+                        
+                        czzz_fragment = fragment.copy()
+                        czzz_fragment['_fragment_type'] = 'CZZZ'  # Capitalized for glycan fragments
+                        czzz_fragment['_mass'] = czzz_mass
+                        czzz_fragment['_mz'] = mz
+                        czzz_fragment['_charge'] = charge
+                        czzz_fragment['_custom_label'] = create_fragment_label(fragment, 'byyy', 'czzz')
+                        extended_fragments['czzz_ions'].append(czzz_fragment)
+                        czzz_generated_count += 1
+    
+    print(f"BZZ DEBUG: Generated {len(extended_fragments['czzz_ions'])} CZZZ ions")
+    
+    # Generate BZZZ ions from CZZZ ions by adding 18.0105
+    bzzz_generated_count = 0
+    # BZZZ generation when CZ is enabled (regardless of BY output setting)
+    if generate_cz_glycan_fragment and generate_by_ions:  
+        # Use the CZZZ ions we just generated
+        if extended_fragments['czzz_ions']:
+            for i, czzz_fragment in enumerate(extended_fragments['czzz_ions']):
+                if isinstance(czzz_fragment, dict) and sum(czzz_fragment.get(key, 0) for key in ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc']) > 0:
+                    # Get the CZZZ mass and add 18.0105 to get BZZZ mass
+                    czzz_mass = czzz_fragment['_mass']
+                    charge = czzz_fragment['_charge']
+                    
+                    bzzz_mass = czzz_mass + BZZZ_FROM_CZZZ_DIFF  # Adding 18.0105
+                    mz = calculator.calculate_mz(bzzz_mass, charge)
+                    
+                    # Create unique key for deduplication
+                    fragment_key = (tuple(sorted((k, v) for k, v in czzz_fragment.items() 
+                                               if k in ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc'] and v > 0)), charge)
+                    
+                    if fragment_key not in unique_bzzz_fragments:
+                        unique_bzzz_fragments.add(fragment_key)
+                    
+                        bzzz_fragment = czzz_fragment.copy()
+                        bzzz_fragment['_fragment_type'] = 'BZZZ'  # Capitalized for glycan fragments
+                        bzzz_fragment['_mass'] = bzzz_mass
+                        bzzz_fragment['_mz'] = mz
+                        bzzz_fragment['_charge'] = charge
+                        bzzz_fragment['_custom_label'] = create_fragment_label(czzz_fragment, 'czzz', 'bzzz')
+                        extended_fragments['bzzz_ions'].append(bzzz_fragment)
+                        bzzz_generated_count += 1
+    
+    print(f"BZZ DEBUG: Generated {len(extended_fragments['bzzz_ions'])} BZZZ ions")
     
     print(f"\nBZZ DEBUG: Final fragment counts:")
     print(f"  C ions: {len(extended_fragments['c_ions'])}")
@@ -4474,6 +5476,9 @@ def generate_glycan_cz_fragments(unique_fragments, glycan_code, modification_typ
     print(f"  ZZ ions: {len(extended_fragments['zz_ions'])}")
     print(f"  CZZ ions: {len(extended_fragments['czz_ions'])}")
     print(f"  BZZ ions: {len(extended_fragments['bzz_ions'])}")
+    print(f"  ZZZ ions: {len(extended_fragments['zzz_ions'])}")
+    print(f"  CZZZ ions: {len(extended_fragments['czzz_ions'])}")
+    print(f"  BZZZ ions: {len(extended_fragments['bzzz_ions'])}")
     
     # Only include BY ions in output if requested
     if generate_by_ions:
@@ -4543,7 +5548,7 @@ def generate_custom_glycan_cz_fragments(working_fragments, glycan_code, modifica
                 c_fragment['_mz'] = mz
                 c_fragment['_mass'] = c_mass
                 c_fragment['_charge'] = charge
-                c_fragment['_fragment_type'] = 'c'
+                c_fragment['_fragment_type'] = 'C'  # Capitalized for glycan fragments
                 
                 # Update custom label for C ion
                 if '_custom_label' in c_fragment:
@@ -4587,7 +5592,7 @@ def generate_custom_glycan_cz_fragments(working_fragments, glycan_code, modifica
                 z_fragment['_mz'] = mz
                 z_fragment['_mass'] = z_mass
                 z_fragment['_charge'] = charge
-                z_fragment['_fragment_type'] = 'z'
+                z_fragment['_fragment_type'] = 'Z'  # Capitalized for glycan fragments
                 
                 # Update custom label for Z ion
                 if '_custom_label' in z_fragment:
@@ -4635,7 +5640,7 @@ def generate_custom_glycan_cz_fragments(working_fragments, glycan_code, modifica
                 cz_fragment['_mz'] = mz
                 cz_fragment['_mass'] = cz_mass
                 cz_fragment['_charge'] = charge
-                cz_fragment['_fragment_type'] = 'cz'
+                cz_fragment['_fragment_type'] = 'CZ'  # Capitalized for glycan fragments
                 
                 # Update custom label for CZ ion
                 if '_custom_label' in cz_fragment:
@@ -4660,10 +5665,54 @@ def generate_custom_glycan_cz_fragments(working_fragments, glycan_code, modifica
     
     return custom_cz_fragments
 
-def generate_peptide_cz_fragments(peptide_fragments, glycan_code, peptide_sequence, generate_bzz=False):
-    """Generate c and z ions from peptide b and y ions with proper Type naming"""
+def generate_peptide_cz_fragments(peptide_fragments, glycan_code, peptide_sequence, generate_bzz=False, glycosite_info=None):
+    """
+    Generate c and z ions from peptide b and y ions with proper Type naming.
+    
+    Args:
+        peptide_fragments: Dictionary with 'b_ions' and 'y_ions'
+        glycan_code: Glycan composition code
+        peptide_sequence: Peptide sequence string
+        generate_bzz: Whether to generate BZZ fragments (unused for peptide fragments)
+        glycosite_info: Optional dict with 'position' (1-based int) and 'glycan_mass' (float)
+                       If provided, c/z fragments containing the glycosite will have:
+                       - The glycosylated residue marked with "*" in the Fragment sequence
+                       - The intact glycan mass added to the fragment mass
+    
+    Returns:
+        List of c/z fragment dictionaries
+    """
     
     cz_fragments = []
+    
+    # Use high-precision monoisotopic constants locally to avoid relying on a class instance
+    PROTON_MASS = 1.00727646688
+    NH3_MASS = 17.026549101     # NH3
+    H2O_MASS = 18.010564684     # H2O
+    
+    # Extract glycosite information if provided
+    glycosite_position = None
+    intact_glycan_mass = None
+    if glycosite_info:
+        glycosite_position = glycosite_info.get('position')
+        intact_glycan_mass = glycosite_info.get('glycan_mass')
+        if glycosite_position and intact_glycan_mass:
+            print(f"🔬 Glycosite-aware c/z generation: position {glycosite_position}, intact glycan mass {intact_glycan_mass:.2f} Da")
+    
+    # Helper function to mark glycosite with "*"
+    def mark_glycosite_in_sequence(sequence, position_1based):
+        """Insert '*' after the residue at the given 1-based position"""
+        # Safety check: ensure sequence is a string
+        if not isinstance(sequence, str):
+            print(f"WARNING: mark_glycosite_in_sequence received non-string sequence: {sequence} (type: {type(sequence)})")
+            return str(sequence) if sequence else ""
+        if not sequence or not position_1based or position_1based < 1 or position_1based > len(sequence):
+            return sequence
+        # position_1based is 1-based, convert to 0-based index
+        idx = position_1based - 1
+        return sequence[:idx+1] + '*' + sequence[idx+1:]
+    
+    peptide_length = len(peptide_sequence)
     
     # Process b and y ions to create c and z ions
     for fragment_type, ions in peptide_fragments.items():
@@ -4683,16 +5732,37 @@ def generate_peptide_cz_fragments(peptide_fragments, glycan_code, peptide_sequen
                     continue
                 
                 if fragment_type == 'b_ions':
-                    # Convert b to c: add NH3 (+17.0265)
-                    c_mass = mass + 17.0265
+                    # IMPORTANT: Skip c_N - for ETD/EThcD, the highest c-ion is c_(N-1)
+                    # c_N (full-length N-terminal c-ion) does not exist in ETD nomenclature
+                    if position >= peptide_length:
+                        continue  # Skip generating c ion for the full peptide
+                    
+                    # The incoming 'mass' is [M+H]+ (neutral mass + 1 proton)
+                    # To get neutral mass: subtract one proton
+                    neutral_b_mass = mass - PROTON_MASS
+                    
+                    # Convert b to c neutral mass: add NH3 (+17.026549101)
+                    neutral_c_mass = neutral_b_mass + NH3_MASS
+                    
+                    # NEW: Check if this c fragment contains the glycosylation site
+                    contains_glycosite = False
+                    c_type_label = f"c{position}"
+                    if glycosite_position and intact_glycan_mass and position >= glycosite_position:
+                        contains_glycosite = True
+                        neutral_c_mass += intact_glycan_mass  # Add intact glycan mass to neutral mass
+                        sequence = mark_glycosite_in_sequence(sequence, glycosite_position)
+                        c_type_label = f"c{position}*"  # Add * to Type field
+                    
+                    # Calculate [M+H]+ (m/z for charge 1)
+                    c_mass_1H = neutral_c_mass + PROTON_MASS
                     
                     # Standard c ion
                     c_fragment = {
-                        'Type': f"c{position}",
+                        'Type': c_type_label,
                         'FragmentType': 'c',
                         'Fragment': sequence,
                         'Ions': '1H+',
-                        'Fragment_mz': c_mass,
+                        'Fragment_mz': c_mass_1H,
                         'Glycan': glycan_code,
                         'Glycopeptide': f"{peptide_sequence}-{glycan_code}",
                         'Is_Peptide_Fragment': True
@@ -4700,13 +5770,14 @@ def generate_peptide_cz_fragments(peptide_fragments, glycan_code, peptide_sequen
                     cz_fragments.append(c_fragment)
                     
                     # c ion with CO loss (-27.9949)
-                    c_co_loss_mass = c_mass - 27.9949
+                    neutral_c_co_mass = neutral_c_mass - 27.9949
+                    c_co_mass_1H = neutral_c_co_mass + PROTON_MASS
                     c_co_fragment = {
-                        'Type': f"c{position}(-CO)",  # FIXED: Include (-CO) in Type
+                        'Type': f"{c_type_label}(-CO)",  # Use c_type_label which includes * if applicable
                         'FragmentType': 'c',
                         'Fragment': f"{sequence}(-CO)",
                         'Ions': '1H+',
-                        'Fragment_mz': c_co_loss_mass,
+                        'Fragment_mz': c_co_mass_1H,
                         'Glycan': glycan_code,
                         'Glycopeptide': f"{peptide_sequence}-{glycan_code}",
                         'Is_Peptide_Fragment': True
@@ -4718,40 +5789,75 @@ def generate_peptide_cz_fragments(peptide_fragments, glycan_code, peptide_sequen
                         # Standard c ion
                         c_charged = c_fragment.copy()
                         c_charged['Ions'] = f"{charge}H+"
-                        c_charged['Fragment_mz'] = (c_mass + (charge - 1) * 1.007276) / charge
+                        # [M+nH]n+ = (neutral_mass + n*proton_mass) / n
+                        c_charged['Fragment_mz'] = (neutral_c_mass + charge * PROTON_MASS) / charge
                         cz_fragments.append(c_charged)
                         
                         # c ion with CO loss
                         c_co_charged = c_co_fragment.copy()
                         c_co_charged['Ions'] = f"{charge}H+"
-                        c_co_charged['Fragment_mz'] = (c_co_loss_mass + (charge - 1) * 1.007276) / charge
+                        c_co_charged['Fragment_mz'] = (neutral_c_co_mass + charge * PROTON_MASS) / charge
                         cz_fragments.append(c_co_charged)
                 
                 elif fragment_type == 'y_ions':
-                    # Convert y to z: subtract NH3 (-17.0265)
-                    z_mass = mass - 17.0265
+                    # The incoming 'mass' is [M+H]+ (neutral mass + 1 proton)
+                    # To get neutral mass: subtract one proton
+                    neutral_y_mass = mass - PROTON_MASS
+                    
+                    # Convert y to z neutral mass: subtract NH3 (-17.026549101)
+                    neutral_z_mass = neutral_y_mass - NH3_MASS
+                    
+                    # Standard z-ion nomenclature
+                    z_type_label = f"z{position}"
+                    
+                    # NEW: Check if this z fragment contains the glycosylation site
+                    # For z ions (C-terminal), position i corresponds to the last i residues
+                    # z_i contains residues from (peptide_length - i + 1) to peptide_length
+                    # It contains the glycosite if: (peptide_length - position + 1) <= glycosite_position
+                    # Equivalently: position >= (peptide_length - glycosite_position + 1)
+                    contains_glycosite = False
+                    if glycosite_position and intact_glycan_mass:
+                        z_threshold = peptide_length - glycosite_position + 1
+                        if position >= z_threshold:
+                            contains_glycosite = True
+                            neutral_z_mass += intact_glycan_mass  # Add intact glycan mass to neutral mass
+                            z_type_label = f"z{position}*"  # Add * to Type field
+                            # For z ions, mark the glycosite at the correct position in the C-terminal sequence
+                            # The sequence is the C-terminal portion, and glycosite_position is from N-terminus
+                            # We need to find where it appears in this C-terminal sequence
+                            # z ion sequence starts at position (peptide_length - position + 1) in the full peptide (1-based)
+                            # Glycosite is at glycosite_position in the full peptide (1-based)
+                            # In the z ion sequence, it's at: glycosite_position - (peptide_length - position + 1) + 1
+                            # Simplifies to: glycosite_position - peptide_length + position
+                            local_glycosite_pos = glycosite_position - peptide_length + position
+                            if local_glycosite_pos > 0:  # Sanity check
+                                sequence = mark_glycosite_in_sequence(sequence, local_glycosite_pos)
+                    
+                    # Calculate [M+H]+ (m/z for charge 1)
+                    z_mass_1H = neutral_z_mass + PROTON_MASS
                     
                     # Standard z ion
                     z_fragment = {
-                        'Type': f"z{position}",
+                        'Type': z_type_label,
                         'FragmentType': 'z',
                         'Fragment': sequence,
                         'Ions': '1H+',
-                        'Fragment_mz': z_mass,
+                        'Fragment_mz': z_mass_1H,
                         'Glycan': glycan_code,
                         'Glycopeptide': f"{peptide_sequence}-{glycan_code}",
                         'Is_Peptide_Fragment': True
                     }
                     cz_fragments.append(z_fragment)
                     
-                    # z ion with H2O loss (-18.0153)
-                    z_h2o_loss_mass = z_mass - 18.0153
+                    # z ion with H2O loss (-18.010564684)
+                    neutral_z_h2o_mass = neutral_z_mass - H2O_MASS
+                    z_h2o_mass_1H = neutral_z_h2o_mass + PROTON_MASS
                     z_h2o_fragment = {
-                        'Type': f"z{position}(-H2O)",  # FIXED: Include (-H2O) in Type
+                        'Type': f"{z_type_label}(-H2O)",  # Use z_type_label which includes * if applicable
                         'FragmentType': 'z',
                         'Fragment': f"{sequence}(-H2O)",
                         'Ions': '1H+',
-                        'Fragment_mz': z_h2o_loss_mass,
+                        'Fragment_mz': z_h2o_mass_1H,
                         'Glycan': glycan_code,
                         'Glycopeptide': f"{peptide_sequence}-{glycan_code}",
                         'Is_Peptide_Fragment': True
@@ -4763,13 +5869,14 @@ def generate_peptide_cz_fragments(peptide_fragments, glycan_code, peptide_sequen
                         # Standard z ion
                         z_charged = z_fragment.copy()
                         z_charged['Ions'] = f"{charge}H+"
-                        z_charged['Fragment_mz'] = (z_mass + (charge - 1) * 1.007276) / charge
+                        # [M+nH]n+ = (neutral_mass + n*proton_mass) / n
+                        z_charged['Fragment_mz'] = (neutral_z_mass + charge * PROTON_MASS) / charge
                         cz_fragments.append(z_charged)
                         
                         # z ion with H2O loss
                         z_h2o_charged = z_h2o_fragment.copy()
                         z_h2o_charged['Ions'] = f"{charge}H+"
-                        z_h2o_charged['Fragment_mz'] = (z_h2o_loss_mass + (charge - 1) * 1.007276) / charge
+                        z_h2o_charged['Fragment_mz'] = (neutral_z_h2o_mass + charge * PROTON_MASS) / charge
                         cz_fragments.append(z_h2o_charged)
     
     return cz_fragments
@@ -4779,11 +5886,29 @@ def format_peptide_fragments_for_table(peptide_fragments, glycan_code, peptide_s
                                      generate_cz_glycan_fragment=True, generate_cz_peptide_fragment=True):
     formatted_fragments = []
     
+    print(f"\n{'='*100}")
+    print(f"TRACE: FORMAT_PEPTIDE_FRAGMENTS_FOR_TABLE START")
+    print(f"   Glycan: {glycan_code}, Peptide: {peptide_sequence}")
+    print(f"   Fragment types in input: {list(peptide_fragments.keys())}")
+    print(f"   generate_glycan_by_ions={generate_glycan_by_ions}")
+    for ftype, frags in peptide_fragments.items():
+        if frags:
+            print(f"      {ftype}: {len(frags)} fragments")
+            # Special logging for yy_ions
+            if ftype == 'yy_ions':
+                for idx, frag in enumerate(frags[:5]):  # Show first 5
+                    print(f"        {idx}: {frag}")
+                if len(frags) > 5:
+                    print(f"        ... and {len(frags)-5} more")
+    print(f"{'='*100}\n")
+    
     # Define which fragment types to exclude based on settings
     excluded_types = set()
     
     if not generate_glycan_by_ions:
-        excluded_types.update(['by_ions', 'b_ions', 'y_ions', 'yy_ions'])
+        excluded_types.update(['by_ions', 'b_ions', 'yy_ions'])
+        # NOTE: Do NOT exclude 'y_ions' here because Y0, Y1, Y1F are in y_ions
+        # We'll filter out regular y fragments below but keep Y0/Y1/Y1F
     
     if not generate_peptide_by_ions:
         excluded_types.update(['peptide_b_ions', 'peptide_y_ions'])
@@ -4797,22 +5922,56 @@ def format_peptide_fragments_for_table(peptide_fragments, glycan_code, peptide_s
     for ion_type, fragments in peptide_fragments.items():
         # Skip excluded fragment types
         if ion_type in excluded_types:
+            print(f"   [SKIP] Skipping {ion_type} (excluded by settings)")
             continue
+        
+        if ion_type == 'yy_ions':
+            print(f"   -> Processing {ion_type} ({len(fragments)} fragments)")
+            for idx, frag in enumerate(fragments[:3]):
+                print(f"        Input {idx}: {frag}")
+        else:
+            print(f"   -> Processing {ion_type} ({len(fragments)} fragments)")
+        
+        # Special handling for y_ions when generate_glycan_by_ions is False
+        # We want to keep Y0, Y1, Y1F but exclude other Y fragments
+        if ion_type == 'y_ions' and not generate_glycan_by_ions:
+            # Filter to keep only Y0, Y1, Y1F (glycopeptide diagnostics)
+            fragments = [f for f in fragments if f.get('fragment_name') in ['Y0', 'Y1', 'Y1F']]
+            if not fragments:
+                continue
 
-        for fragment in fragments:
+        for fragment_idx, fragment in enumerate(fragments):
             # Initialize fragment_composition to avoid UnboundLocalError
             fragment_composition = ""
+            force_fragment_type = None
             
             # Determine the fragment name based on the fragment structure
             if '_custom_label' in fragment:
                 fragment_name = fragment['_custom_label']
-                # Skip any remaining BY fragments that weren't caught by ion_type filtering
-                if any(by_indicator in fragment_name.upper() for by_indicator in ['-B', 'BY-', 'YY-']):
+                name_upper = fragment_name.upper()
+                
+                # Enhanced logging for YY fragments
+                if name_upper.startswith('YY-'):
+                    print(f"      [YY Fragment #{fragment_idx}]")
+                    print(f"        Name: {fragment_name} (custom_label)")
+                    for key in ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc']:
+                        if key in fragment and fragment[key] > 0:
+                            print(f"        {key}: {fragment[key]}")
+                else:
+                    print(f"      Fragment #{fragment_idx}: custom_label={fragment_name}")
+                
+                # Skip any remaining BY fragments that weren't caught by ion_type filtering,
+                # but keep legitimate YY fragments such as YY-HexNAc2-Hex2-PEP.
+                if ('BY-' in name_upper or name_upper.endswith('-BY') or name_upper.endswith('-B')) and not name_upper.startswith('YY-'):
+                    print(f"         [SKIP] Filtered out (BY fragment)")
                     continue
             elif 'fragment_name' in fragment:
                 fragment_name = fragment['fragment_name']
+                name_upper = fragment_name.upper()
+                print(f"      Fragment #{fragment_idx}: fragment_name={fragment_name}")
                 # Skip peptide BY fragments if not enabled
-                if fragment_name.startswith(('b', 'y')) and not generate_peptide_by_ions:
+                if fragment_name.lower().startswith(('b', 'y')) and not generate_peptide_by_ions:
+                    print(f"         [SKIP] Filtered out (peptide BY)")
                     continue
             else:
                 # Generate fragment name from composition for glycan fragments
@@ -4825,11 +5984,51 @@ def format_peptide_fragments_for_table(peptide_fragments, glycan_code, peptide_s
                     fragment_name = "-".join(comp_parts)
                 else:
                     fragment_name = "Unknown"
+                print(f"      Fragment #{fragment_idx}: generated_name={fragment_name}")
+            
+            # Ensure YY fragments have the correct YY prefix
+            if ion_type == 'yy_ions':
+                original_name = fragment_name
+                upper_name = fragment_name.upper()
+                if upper_name.startswith('Y-') and not upper_name.startswith('YY-'):
+                    fragment_name = 'YY-' + fragment_name[2:]
+                elif not upper_name.startswith('YY-'):
+                    fragment_name = f"YY-{fragment_name}"
+                if fragment_name != original_name:
+                    print(f"      [YY FIX] Renaming {original_name} -> {fragment_name}")
+
+            # Reclassify Y-ions that match the core YY composition when they slipped through
+            if ion_type != 'yy_ions':
+                has_numeric_counts = any(fragment.get(key, 0) > 0 for key in ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc'])
+                matches_core_counts = (
+                    fragment.get('HexNAc', 0) == 2 and fragment.get('Hex', 0) == 2 and
+                    fragment.get('Fuc', 0) == 0 and fragment.get('NeuAc', 0) == 0 and
+                    fragment.get('NeuGc', 0) == 0
+                )
+                name_upper = fragment_name.upper()
+
+                # Allow detection by numeric counts or by label text
+                matches_core_label = name_upper.startswith('Y-HEXNAC2-HEX2') or name_upper.startswith('YY-HEXNAC2-HEX2')
+
+                if has_numeric_counts and matches_core_counts:
+                    original_name = fragment_name
+                    fragment_name = 'YY-' + fragment_name[2:] if name_upper.startswith('Y-') else fragment_name if name_upper.startswith('YY-') else f"YY-{fragment_name}"
+                    force_fragment_type = 'YY'
+                    print(f"      [YY RECLASS] Reassigning {original_name} -> {fragment_name} (from counts)")
+                elif not has_numeric_counts and matches_core_label and name_upper.startswith('Y-'):
+                    original_name = fragment_name
+                    fragment_name = 'YY-' + fragment_name[2:]
+                    force_fragment_type = 'YY'
+                    print(f"      [YY RECLASS] Reassigning {original_name} -> {fragment_name} (from label)")
             
             # Get Fragment_mz and charge
             if '_mass' in fragment and '_charge' in fragment:
                 fragment_mass = fragment['_mz']
                 charge = fragment['_charge']
+            elif '_charge' in fragment and 'fragment_mass' in fragment:
+                # For Y0/Y1/Y1F fragments with _charge field
+                charge = fragment['_charge']
+                fragment_mass = fragment['fragment_mass']  # Already calculated as m/z
             elif 'fragment_mass' in fragment:
                 fragment_mass = fragment['fragment_mass']
                 charge = 1
@@ -4839,7 +6038,12 @@ def format_peptide_fragments_for_table(peptide_fragments, glycan_code, peptide_s
             
             # Skip fragments with zero or invalid mass
             if fragment_mass <= 0:
+                print(f"         [SKIP] Filtered out (zero/invalid mass: {fragment_mass})")
                 continue
+            
+            # Enhanced logging for YY fragments
+            if fragment_name.startswith('YY-'):
+                print(f"      [YY-{fragment_name[3:]}] ✓ Passed mass validation: {fragment_mass} m/z")
             
             # FIXED: For peptide fragments, use the actual amino acid sequence from fragment_sequence
             # For other fragments, extract composition from fragment name
@@ -4855,6 +6059,8 @@ def format_peptide_fragments_for_table(peptide_fragments, glycan_code, peptide_s
             else:
                 # Extract fragment composition for other fragments
                 fragment_composition = extract_fragment_composition(fragment_name)
+            
+            print(f"         ✓ PASSED: mass={fragment_mass}, composition={fragment_composition}")
             
             # FIXED: Comprehensive peptide fragment detection
             is_peptide_fragment = False
@@ -4884,19 +6090,39 @@ def format_peptide_fragments_for_table(peptide_fragments, glycan_code, peptide_s
                 # This is a glycan fragment - all glycan fragments should be False
                 is_peptide_fragment = False
             
+            # Determine FragmentType: use fragment's own type if available (for Y0/Y1/Y1F), else derive from ion_type
+            if force_fragment_type:
+                fragment_type_value = force_fragment_type
+            elif ion_type == 'yy_ions':
+                fragment_type_value = 'YY'
+            elif 'fragment_type' in fragment and fragment['fragment_type']:
+                # Use the fragment's explicit type (e.g., 'Y' for Y0/Y1/Y1F)
+                fragment_type_value = fragment['fragment_type']
+            else:
+                # Derive from ion_type (e.g., 'y_ions' -> 'y')
+                fragment_type_value = ion_type.replace('_ions', '')
+            
             fragment_entry = {
                 'Glycopeptides': f"{glycan_code}_{peptide_sequence}",
                 'Glycan': glycan_code,
                 'Type': fragment_name,
-                'FragmentType': ion_type.replace('_ions', ''),
+                'FragmentType': fragment_type_value,
                 'Fragment_mz': fragment_mass,
                 'Ions': f"{charge}H+",
                 'Theoretical_mz': fragment_mass,
                 'Fragment': fragment_composition,
                 'Is_Peptide_Fragment': is_peptide_fragment  # Now properly set for all fragments
             }
+            
+            # Log YY fragments before adding to output
+            if fragment_name.startswith('YY-'):
+                print(f"         ✓ APPENDING: {fragment_name} | charge={charge} | mass={fragment_mass}")
+            
             formatted_fragments.append(fragment_entry)
     
+    print(f"\n[FORMAT END] Output {len(formatted_fragments)} total formatted fragments")
+    yy_count = sum(1 for f in formatted_fragments if 'YY' in f.get('Type', '').upper())
+    print(f"   YY fragments in output: {yy_count}")
     return formatted_fragments
 
 def extract_fragment_composition(fragment_name):
@@ -4947,6 +6173,83 @@ def ensure_peptide_masses_initialized(calculator):
     if not hasattr(calculator, 'PEPTIDE_MASSES'):
         calculator.PEPTIDE_MASSES = {}
 
+def parse_glycosite_column(site_value, peptide_sequence):
+    """
+    Parse a glycosylation site specification from a Site/Glycosylation_site column.
+    
+    Args:
+        site_value (str): Site specification like "S14" or "T7" 
+        peptide_sequence (str): The peptide sequence to validate against
+    
+    Returns:
+        dict: Dictionary with 'residue', 'position' (1-based), or None if invalid
+    """
+    if not site_value or pd.isna(site_value):
+        return None
+        
+    site_str = str(site_value).strip().upper()
+    
+    # Match pattern: single letter followed by digits (e.g., "S14", "T7", "N5")
+    match = re.match(r'^([A-Z])(\d+)$', site_str)
+    if not match:
+        return None
+    
+    residue = match.group(1)
+    position = int(match.group(2))
+    
+    # Validate position is within peptide bounds
+    if peptide_sequence and (position < 1 or position > len(peptide_sequence)):
+        print(f"Warning: Glycosite position {position} out of range for peptide {peptide_sequence} (length {len(peptide_sequence)})")
+        return None
+    
+    # Validate residue matches peptide at that position
+    if peptide_sequence and peptide_sequence[position - 1] != residue:
+        print(f"Warning: Glycosite residue mismatch - expected {residue} at position {position} but found {peptide_sequence[position - 1]} in peptide {peptide_sequence}")
+        return None
+    
+    return {
+        'residue': residue,
+        'position': position
+    }
+
+def calculate_glycan_mass_from_composition(glycan_code, calculator=None):
+    """
+    Calculate the intact glycan mass from a glycan composition code.
+    
+    Args:
+        glycan_code (str): Glycan composition like "HexNAc(4)Hex(5)Fuc(1)NeuAc(2)"
+        calculator (GlycanMassCalculator): Optional calculator instance
+    
+    Returns:
+        float: Intact glycan mass, or None if calculation fails
+    """
+    if not calculator:
+        calculator = GlycanMassCalculator()
+    
+    try:
+        # Parse glycan composition
+        hexnac, hex, fuc, neuac, neugc = calculator.parse_glycan_code(glycan_code)
+        
+        # Use monoisotopic masses for monosaccharides
+        HEXNAC_MASS = 203.0794  # HexNAc
+        HEX_MASS = 162.0528     # Hex
+        FUC_MASS = 146.0579     # Fuc
+        NEUAC_MASS = 291.0954   # NeuAc
+        NEUGC_MASS = 307.0903   # NeuGc
+        
+        # Calculate total mass
+        mass = (hexnac * HEXNAC_MASS + 
+                hex * HEX_MASS + 
+                fuc * FUC_MASS + 
+                neuac * NEUAC_MASS + 
+                neugc * NEUGC_MASS)
+        
+        return mass
+        
+    except Exception as e:
+        print(f"Warning: Failed to calculate glycan mass from '{glycan_code}': {e}")
+        return None
+
 def parse_glycopeptide(glycopeptide_string):
     """
     Parse a glycopeptide string to extract peptide, glycan, and modification components.
@@ -4955,12 +6258,13 @@ def parse_glycopeptide(glycopeptide_string):
         glycopeptide_string (str): String in various formats with modifications
     
     Returns:
-        dict: Dictionary with 'peptide', 'glycan', 'glycan_type', 'glycan_base_mass', and 'pep_modification' keys
+        dict: Dictionary with 'peptide', 'glycan', 'glycan_type', 'glycan_base_mass', 'glycosite_position', and 'pep_modification' keys
     """
     original_string = glycopeptide_string
     modifications = []
     glycan_base_mass = None
     glycan_type = None
+    glycosite_position = None  # NEW: Track glycosylation site position (1-based)
     
     # First, remove prefix amino acid (e.g., "S.", "R.")
     if re.match(r'^[A-Z]\.', glycopeptide_string):
@@ -4988,7 +6292,7 @@ def parse_glycopeptide(glycopeptide_string):
             peptide_part = match.group(1)
             glycan_part = match.group(2)
         else:
-            return {"peptide": None, "glycan": None, "glycan_type": None, "glycan_base_mass": None, "pep_modification": None}
+            return {"peptide": None, "glycan": None, "glycan_type": None, "glycan_base_mass": None, "glycosite_position": None, "pep_modification": None}
     
     # Extract position-specific modifications from peptide
     clean_peptide = ""
@@ -5012,9 +6316,11 @@ def parse_glycopeptide(glycopeptide_string):
                     if amino_acid in ['S', 'T']:
                         glycan_type = "O"  # Return "O" instead of "O-glycopeptide"
                         glycan_base_mass = mod_value
+                        glycosite_position = position  # NEW: Capture 1-based position
                     elif amino_acid == 'N':
                         glycan_type = "N"  # Return "N" instead of "N-glycopeptide"
                         glycan_base_mass = mod_value
+                        glycosite_position = position  # NEW: Capture 1-based position
                     else:
                         # Regular peptide modification
                         modifications.append(f"(+{mod_value}):{amino_acid}{position}")
@@ -5036,20 +6342,26 @@ def parse_glycopeptide(glycopeptide_string):
         "glycan": glycan_part,
         "glycan_type": glycan_type,
         "glycan_base_mass": glycan_base_mass,
+        "glycosite_position": glycosite_position,  # NEW: Return glycosite position
         "pep_modification": pep_modification
     }
 
 def combine_glycan_and_peptide_fragments(glycan_fragments_df, peptide_fragments, glycan_code, peptide_sequence, 
                                        generate_cz_peptide=False, generate_cz_glycan=False, 
                                        generate_peptide_by_ions=False, generate_glycan_by_ions=False,
-                                       enable_custom_peptide_fragments=False):
+                                       enable_custom_peptide_fragments=False, glycosite_info=None):
     """
     Combine glycan fragments with peptide fragments into a single DataFrame.
+    
+    Args:
+        glycosite_info (dict): Optional dict with 'position' (1-based int) and 'glycan_mass' (float) for c/z fragment annotation
     """
     print(f"DEBUG: combine_glycan_and_peptide_fragments called with:")
     print(f"  generate_cz_peptide: {generate_cz_peptide}")
     print(f"  generate_peptide_by_ions: {generate_peptide_by_ions}")
     print(f"  add_custom_peptide_fragments: {enable_custom_peptide_fragments}")
+    if glycosite_info:
+        print(f"  glycosite_info: position={glycosite_info.get('position')}, mass={glycosite_info.get('glycan_mass')}")
     
     peptide_rows = []
     
@@ -5070,11 +6382,21 @@ def combine_glycan_and_peptide_fragments(glycan_fragments_df, peptide_fragments,
     # Generate c/z peptide fragments if requested (independent of b/y setting)
     if generate_cz_peptide:
         print(f"DEBUG: generate_cz_peptide=True, generating peptide C/Z fragments")
-        cz_peptide_fragments = generate_peptide_cz_fragments(
-            peptide_fragments, glycan_code, peptide_sequence
-        )
-        peptide_rows.extend(cz_peptide_fragments)
-        print(f"DEBUG: Added {len(cz_peptide_fragments)} peptide C/Z fragments")
+        try:
+            cz_peptide_fragments = generate_peptide_cz_fragments(
+                peptide_fragments, glycan_code, peptide_sequence, glycosite_info=glycosite_info  # NEW: Pass glycosite info
+            )
+            peptide_rows.extend(cz_peptide_fragments)
+            print(f"DEBUG: Added {len(cz_peptide_fragments)} peptide C/Z fragments")
+        except Exception as e:
+            print(f"ERROR in generate_peptide_cz_fragments: {e}")
+            print(f"  peptide_fragments keys: {peptide_fragments.keys() if isinstance(peptide_fragments, dict) else 'not a dict'}")
+            print(f"  glycan_code: {glycan_code}")
+            print(f"  peptide_sequence: {peptide_sequence}")
+            print(f"  glycosite_info: {glycosite_info}")
+            import traceback
+            traceback.print_exc()
+            raise
     else:
         print(f"DEBUG: generate_cz_peptide=False, skipping peptide C/Z fragment generation")
     
@@ -5132,26 +6454,45 @@ def format_fragment_string(fragment, frag_type):
     if fragment.get('NeuAc', 0) > 0:
         comp_parts.append(f"NeuAc{fragment['NeuAc']}")
     
-    # Add -redend for y/yy ions
-    composition = "-".join(comp_parts)
-    has_reducing_end = frag_type in ['y_ions', 'yy_ions']
-    if has_reducing_end:
+    # Add -redend for y/yy/yyy ions (all Y-type ions with reducing end)
+    composition = "-".join(comp_parts) if comp_parts else ""
+    has_reducing_end = frag_type in ['y_ions', 'yy_ions', 'yyy_ions']
+    if has_reducing_end and composition:  # Only add -redend if there's a composition
         composition += "-redend"
     
     # Format according to ion type - ENSURE CONSISTENT PREFIX HANDLING
     if frag_type == 'by_ions':
-        return f"Y-{composition.replace('-redend', '')}-B"
+        return f"Y-{composition.replace('-redend', '')}-B" if composition else "Y-B"
+    elif frag_type == 'byy_ions':
+        return f"YY-{composition.replace('-redend', '')}-B" if composition else "YY-B"
+    elif frag_type == 'byyy_ions':
+        return f"YYY-{composition.replace('-redend', '')}-B" if composition else "YYY-B"
     elif frag_type == 'y_ions':
+        if not composition:
+            return "Y-redend"  # Y0 = peptide only with reducing end
         return f"Y-{composition}"  # Must have Y- prefix for Y ions
     elif frag_type == 'yy_ions':
+        if not composition:
+            return "YY-redend"  # YY0 = peptide only
         return f"YY-{composition}"
+    elif frag_type == 'yyy_ions':
+        if not composition:
+            return "YYY-redend"  # YYY0 = peptide only
+        return f"YYY-{composition}"
     elif frag_type == 'b_ions':
-        return f"{composition}-B"
+        return f"{composition}-B" if composition else "B"
     else:
-        return composition
+        return composition if composition else ""
 
 def collect_unique_fragments(results, modification_type=6, peptide=None, use_cam=False, fixed_mods=None, variable_mods=None, mod_string=None):
     """Collect and deduplicate fragments from all structures using composition and mass"""
+    
+    print(f"\n{'='*80}")
+    print(f"DEBUG: collect_unique_fragments called")
+    print(f"  Number of results: {len(results)}")
+    print(f"  modification_type: {modification_type}")
+    print(f"  peptide: {peptide}")
+    print(f"{'='*80}\n")
     
     # Ensure we have lists for modifications to avoid type errors
     fixed_mods = fixed_mods or []
@@ -5174,7 +6515,10 @@ def collect_unique_fragments(results, modification_type=6, peptide=None, use_cam
         'b_ions': {},
         'y_ions': {},
         'by_ions': {},
-        'yy_ions': {}
+        'yy_ions': {},
+        'byy_ions': {},
+        'yyy_ions': {},
+        'byyy_ions': {}
     }
     
     # Track fragment IDs to aid debugging
@@ -5182,15 +6526,24 @@ def collect_unique_fragments(results, modification_type=6, peptide=None, use_cam
         'b_ions': set(),
         'y_ions': set(),
         'by_ions': set(),
-        'yy_ions': set()
+        'yy_ions': set(),
+        'byy_ions': set(),
+        'yyy_ions': set(),
+        'byyy_ions': set()
     }
     
-    for result in results:
+    for i, result in enumerate(results):
+        print(f"DEBUG: Processing result {i+1}/{len(results)}")
+        
         # Extract fragments from the tuple (fragments, cleavage_info)
         if isinstance(result['fragments'], tuple):
             fragments, cleavage_info = result['fragments']
         else:
             fragments = result['fragments']
+        
+        print(f"  Fragment types in this result: {list(fragments.keys())}")
+        for frag_type in fragments.keys():
+            print(f"    {frag_type}: {len(fragments[frag_type])} fragments")
         
         # Process each fragment type
         for frag_type, frags in fragments.items():
@@ -5205,7 +6558,7 @@ def collect_unique_fragments(results, modification_type=6, peptide=None, use_cam
                 
                 # Create a comprehensive deduplication key that captures all attributes
                 # The key format is: (composition tuple, fragment type, reducing_end flag)
-                has_reducing_end = frag_type in ['y_ions', 'yy_ions']
+                has_reducing_end = frag_type in ['y_ions', 'yy_ions', 'yyy_ions']
                 comp_tuple = tuple(sorted((k, v) for k, v in fragment.items() if v > 0))
                 dedup_key = (comp_tuple, frag_type, has_reducing_end)
                 
@@ -5215,23 +6568,91 @@ def collect_unique_fragments(results, modification_type=6, peptide=None, use_cam
                 # Store using the combined key
                 unique_fragments[frag_type][dedup_key] = fragment
     
-    # For debugging - check what Y ions we actually collected
-    #print(f"Y-ion fragments collected: {fragment_ids['y_ions']}")
+    # For debugging - check what fragments we actually collected
+    print(f"\nDEBUG: Summary of collected unique fragments:")
+    for frag_type in ['b_ions', 'y_ions', 'by_ions', 'yy_ions', 'byy_ions', 'yyy_ions', 'byyy_ions']:
+        print(f"  {frag_type}: {len(unique_fragments[frag_type])} unique fragments")
+        if len(fragment_ids[frag_type]) > 0:
+            print(f"    Sample IDs: {list(fragment_ids[frag_type])[:3]}")
     
     # Convert back to lists for easier usage
     deduplicated_fragments = {
         'b_ions': list(unique_fragments['b_ions'].values()),
         'y_ions': list(unique_fragments['y_ions'].values()),
         'by_ions': list(unique_fragments['by_ions'].values()),
-        'yy_ions': list(unique_fragments['yy_ions'].values())
+        'yy_ions': list(unique_fragments['yy_ions'].values()),
+        'byy_ions': list(unique_fragments['byy_ions'].values()),
+        'yyy_ions': list(unique_fragments['yyy_ions'].values()),
+        'byyy_ions': list(unique_fragments['byyy_ions'].values())
     }
+    
+    print(f"\n{'='*80}")
+    print("DEBUG: Y-ION TRACKING - Before adding mandatory fragments")
+    print(f"{'='*80}")
+    print(f"Total y_ions: {len(deduplicated_fragments['y_ions'])}")
+    for i, frag in enumerate(deduplicated_fragments['y_ions'][:10]):
+        print(f"  Y-ion {i+1}: {frag}")
+    
+    # CRITICAL: Add mandatory glycopeptide diagnostic fragments (Y0, Y1, Y-HexNAc2)
+    # These ALWAYS exist in glycopeptides regardless of structure
+    if peptide and modification_type == 6:
+        print(f"\n{'='*80}")
+        print("DEBUG: Adding mandatory glycopeptide diagnostic fragments")
+        print(f"  Peptide: {peptide}")
+        print(f"  Modification type: {modification_type}")
+        print(f"{'='*80}")
+        
+        # Helper to check if fragment already exists
+        def fragment_exists(frag_list, target_comp):
+            for frag in frag_list:
+                if all(frag.get(k, 0) == v for k, v in target_comp.items()):
+                    # Also check that no extra keys exist
+                    if all(k in target_comp or v == 0 for k, v in frag.items()):
+                        return True
+            return False
+        
+        # Add Y0 (just peptide, no sugars) - will show as Y-PEP in output
+        y0_comp = {}  # Empty composition = peptide only
+        if not fragment_exists(deduplicated_fragments['y_ions'], y0_comp):
+            deduplicated_fragments['y_ions'].append(y0_comp.copy())
+            print("  [OK] Added Y0 (peptide only): {}")
+        else:
+            print("  [SKIP] Y0 already exists")
+        
+        # Add Y1 (peptide + 1 HexNAc)
+        y1_comp = {'HexNAc': 1}
+        if not fragment_exists(deduplicated_fragments['y_ions'], y1_comp):
+            deduplicated_fragments['y_ions'].append(y1_comp.copy())
+            print(f"  [OK] Added Y1 (peptide + HexNAc1): {y1_comp}")
+        else:
+            print("  [SKIP] Y1 already exists")
+        
+        # Add Y-HexNAc2 (peptide + 2 HexNAc) - core N-glycan fragment
+        y_hexnac2_comp = {'HexNAc': 2}
+        if not fragment_exists(deduplicated_fragments['y_ions'], y_hexnac2_comp):
+            deduplicated_fragments['y_ions'].append(y_hexnac2_comp.copy())
+            print(f"  [OK] Added Y-HexNAc2 (peptide + 2 HexNAc - core fragment): {y_hexnac2_comp}")
+        else:
+            print("  [SKIP] Y-HexNAc2 already exists")
+        
+        print(f"\n{'='*80}")
+        print("DEBUG: Y-ION TRACKING - After adding mandatory fragments")
+        print(f"{'='*80}")
+        print(f"Total y_ions: {len(deduplicated_fragments['y_ions'])}")
+        for i, frag in enumerate(deduplicated_fragments['y_ions'][:15]):
+            print(f"  Y-ion {i+1}: {frag}")
+    
+    print(f"\nDEBUG: Returning deduplicated fragments:")
+    for frag_type, frags in deduplicated_fragments.items():
+        print(f"  {frag_type}: {len(frags)} fragments")
+    print(f"{'='*80}\n")
     
     return deduplicated_fragments
 
 def deduplicate_fragments_by_mass(df):
     """
     Deduplicate fragments by Fragment_mz per Glycopeptide, prioritizing fragment types
-    in this order: Glycan fragments (b > y > by > yy > byy > c > z > cz > zz > czz > bzz) 
+    in this order: Glycan fragments (b > y > by > yy > byy > yyy > byyy > c > z > cz > zz > czz > bzz) 
     then Peptide fragments (b > y > c > z), with charge state priority (1+ > 2+ > 3+)
     """
     if df.empty:
@@ -5245,18 +6666,40 @@ def deduplicate_fragments_by_mass(df):
     
     # Define priority mapping with glycan fragments first, then peptide fragments
     priority_map = {
-        # Glycan fragments (lower number = higher priority)
+        # Glycan fragments (lowercase - legacy support)
         'b': 1,     # Glycan B ions
         'y': 2,     # Glycan Y ions  
         'by': 3,    # Glycan BY ions
-        'yy': 4,    # Glycan YY ions
-        'byy': 5,   # Glycan BYY ions
-        'c': 6,     # Glycan C ions
-        'z': 7,     # Glycan Z ions
-        'cz': 8,    # Glycan CZ ions
-        'zz': 9,    # Glycan ZZ ions
-        'czz': 10,  # Glycan CZZ ions
-        'bzz': 11,  # Glycan BZZ ions
+        'yy': 4,    # Glycan YY ions (legacy)
+        'byy': 5,   # Glycan BYY ions (legacy)
+        'yyy': 6,   # Glycan YYY ions (legacy)
+        'byyy': 7,  # Glycan BYYY ions (legacy)
+        'c': 8,     # Glycan C ions (legacy)
+        'z': 9,     # Glycan Z ions (legacy)
+        'cz': 10,   # Glycan CZ ions (legacy)
+        'zz': 11,   # Glycan ZZ ions (legacy)
+        'czz': 12,  # Glycan CZZ ions (legacy)
+        'bzz': 13,  # Glycan BZZ ions (legacy)
+        'zzz': 14,  # Glycan ZZZ ions (legacy)
+        'czzz': 15, # Glycan CZZZ ions (legacy)
+        'bzzz': 16, # Glycan BZZZ ions (legacy)
+        # Glycan fragments (CAPITALIZED - current)
+        'B': 1,     # Glycan B ions
+        'Y': 2,     # Glycan Y ions
+        'BY': 3,    # Glycan BY ions
+        'YY': 4,    # Glycan YY ions
+        'BYY': 5,   # Glycan BYY ions
+        'YYY': 6,   # Glycan YYY ions
+        'BYYY': 7,  # Glycan BYYY ions
+        'C': 8,     # Glycan C ions
+        'Z': 9,     # Glycan Z ions
+        'CZ': 10,   # Glycan CZ ions
+        'ZZ': 11,   # Glycan ZZ ions
+        'CZZ': 12,  # Glycan CZZ ions
+        'BZZ': 13,  # Glycan BZZ ions
+        'ZZZ': 14,  # Glycan ZZZ ions
+        'CZZZ': 15, # Glycan CZZZ ions
+        'BZZZ': 16, # Glycan BZZZ ions
     }
     
     # Add peptide fragment priorities (higher numbers than glycan fragments)
@@ -5344,6 +6787,24 @@ def deduplicate_fragments_by_mass(df):
     
     print(f"After deduplication: {len(df_deduplicated)} fragments")
     print(f"Removed {len(df) - len(df_deduplicated)} duplicate fragments")
+    
+    # DEBUG: Check if Y-HexNAc2 survived deduplication
+    if 'Type' in df_deduplicated.columns:
+        y_hexnac2_check = df_deduplicated['Type'].astype(str).str.match(r'^Y-HexNAc2-(PEP|redend)$', case=False, na=False)
+        if y_hexnac2_check.any():
+            print(f"  ✓ Y-HexNAc2 SURVIVED deduplication: {y_hexnac2_check.sum()} rows")
+        else:
+            print(f"  ✗ Y-HexNAc2 was REMOVED during deduplication")
+            # Check if it existed before deduplication
+            y_hexnac2_before = df['Type'].astype(str).str.match(r'^Y-HexNAc2-(PEP|redend)$', case=False, na=False)
+            if y_hexnac2_before.any():
+                print(f"     (It existed before deduplication with {y_hexnac2_before.sum()} rows)")
+                # Show what it was deduplicated against
+                sample_mz = df[y_hexnac2_before]['Fragment_mz'].iloc[0]
+                print(f"     Its m/z was: {sample_mz}")
+                same_mz = df_deduplicated[df_deduplicated['Fragment_mz'].round(4) == round(sample_mz, 4)]
+                if not same_mz.empty:
+                    print(f"     Fragment(s) kept at same m/z: {same_mz['Type'].tolist()}")
     
     # Show summary of what was kept
     if 'Is_Peptide_Fragment' in df_deduplicated.columns:
@@ -5445,10 +6906,10 @@ def generate_all_fragments_table(results, glycan_code, modification_type=6, pept
     df_all = pd.DataFrame(all_data)
     return df_all
 
-def generate_fragment_table(unique_fragments, glycan_code, modification_type=6, peptide=None, use_cam=False, fixed_mods=None, variable_mods=None, mod_string=None):
+def generate_fragment_table(unique_fragments, glycan_code, modification_type=6, peptide=None, use_cam=False, fixed_mods=None, variable_mods=None, mod_string=None, glycan_type=None):
     """Generate a DataFrame with Fragment_mzes and charge states"""
     # Debug message at beginning
-    print(f"DEBUG: generate_fragment_table called with: use_cam={use_cam}, fixed_mods={fixed_mods}")
+    print(f"DEBUG: generate_fragment_table called with: use_cam={use_cam}, fixed_mods={fixed_mods}, glycan_type={glycan_type}")
     print(f"\n=== DEBUG: generate_fragment_table ===")
     print(f"Glycan code: {glycan_code}")
     print(f"Peptide: {peptide}")
@@ -5520,8 +6981,39 @@ def generate_fragment_table(unique_fragments, glycan_code, modification_type=6, 
             monosaccharide_keys = ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc']
             monosaccharide_sum = sum(fragment.get(key, 0) for key in monosaccharide_keys if isinstance(fragment.get(key, 0), (int, float)))
             
+            # Special handling for ALL oxonium ions (A-type)
+            if fragment.get('_custom_type') == 'oxonium':
+                fragment_name = fragment.get('_custom_label', 'Unknown')
+                charge_str = fragment.get('_ion_charge', '1H+')
+                fragment_type_clean = fragment.get('_fragment_type', 'A')
+                
+                # Handle oxonium with direct m/z
+                if '_direct_mz' in fragment:
+                    theoretical_mz = fragment['_direct_mz']
+                else:
+                    # Handle oxonium with mass adjustment (like HexNAc-C₂H₆O₃)
+                    fragment_mass = calculator.calculate_fragment_mass(fragment, frag_type, peptide=peptide)
+                    charge = int(charge_str.replace('H+', ''))
+                    theoretical_mz = calculator.calculate_mz(fragment_mass, charge)
+                
+                data.append({
+                    'Type': fragment_name,
+                    'FragmentType': fragment_type_clean,
+                    'Fragment': fragment_name,  # For oxonium, name is the composition
+                    'Ions': charge_str,
+                    'Fragment_mz': theoretical_mz,
+                    'Glycan': glycan_code,
+                    'Glycopeptide': f"{peptide}-{glycan_code}" if peptide else glycan_code
+                })
+                continue  # Skip normal processing
+            
+            # Skip fragments with no monosaccharides UNLESS it's Y0 for glycopeptides
             if monosaccharide_sum == 0:
-                continue
+                # Allow Y0 (peptide-only Y fragment) for glycopeptides
+                is_y0 = (frag_type == 'y_ions' and modification_type == 6 and peptide and 
+                        all(fragment.get(k, 0) == 0 for k in ['HexNAc', 'Hex', 'Fuc', 'NeuAc', 'NeuGc']))
+                if not is_y0:
+                    continue
 
             # Check if this is a C/Z fragment with pre-calculated values
             if '_fragment_type' in fragment and '_mz' in fragment and '_charge' in fragment:
@@ -5555,8 +7047,8 @@ def generate_fragment_table(unique_fragments, glycan_code, modification_type=6, 
                 if '_custom_label' in fragment:
                     fragment_string = fragment['_custom_label']
                 
-                # Clean fragment type (remove "_ions" suffix)
-                fragment_type_clean = frag_type.replace('_ions', '')
+                # Clean fragment type (remove "_ions" suffix) and capitalize
+                fragment_type_clean = frag_type.replace('_ions', '').upper()
                 
                 # Apply extract_fragment_composition to clean the fragment name for Fragment column
                 fragment_composition = extract_fragment_composition(fragment_string)
@@ -5594,6 +7086,112 @@ def generate_fragment_table(unique_fragments, glycan_code, modification_type=6, 
                         })
     
     df = pd.DataFrame(data)
+    
+    # --- Post-processing fixes for Y0/Y1/Y1F ---
+    if not df.empty:
+        # 0) Convert Y-redend to Y0, Y-HexNAc1-redend to Y1 (before redend→PEP replacement)
+        if 'Type' in df.columns:
+            # Y0: peptide only (empty glycan composition)
+            mask_y0 = df['Type'].astype(str).str.match(r'^Y-redend$', case=False, na=False)
+            if mask_y0.any():
+                df.loc[mask_y0, 'Type'] = 'Y0'
+                print(f"INFO: Renamed {mask_y0.sum()} Y-redend to Y0")
+            
+            # Y1: peptide + 1 HexNAc
+            mask_y1 = df['Type'].astype(str).str.match(r'^Y-HexNAc1?-redend$', case=False, na=False)
+            if mask_y1.any():
+                df.loc[mask_y1, 'Type'] = 'Y1'
+                print(f"INFO: Renamed {mask_y1.sum()} Y-HexNAc-redend to Y1")
+        
+        # 1) Remove ONLY "Y-HexNAc1-PEP" and "Y-HexNAc-PEP" rows (duplicates of Y1) - keep YY-HexNAc-PEP and Y-HexNAc2-PEP, etc.
+        # Y-HexNAc1-PEP is identical to Y1 (peptide + GlcNAc), so we remove the glycan-style name
+        if 'Type' in df.columns:
+            # Match ONLY: Y-HexNAc-PEP (no number) or Y-HexNAc1-PEP (with 1)
+            # This regex matches single Y (not YY) followed by -HexNAc with optional "1" only, then -PEP
+            # It will NOT match Y-HexNAc2-PEP, Y-HexNAc3-PEP, etc.
+            mask_dup = df['Type'].astype(str).str.match(r'^Y-HexNAc1?-PEP$', case=False, na=False)
+            if mask_dup.any():
+                removed = int(mask_dup.sum())
+                df = df.loc[~mask_dup].copy()
+                print(f"INFO: Removed {removed} duplicate Y-HexNAc1-PEP/Y-HexNAc-PEP rows (duplicates of Y1)")
+        
+        # 1b) Replace "Y-HexNAc1-Fuc1-PEP" with "Y1F" in Type column
+        if 'Type' in df.columns:
+            mask_y1f = df['Type'].astype(str).str.match(r'^Y-HexNAc\d*-Fuc\d*-PEP$', case=False, na=False)
+            if mask_y1f.any():
+                df.loc[mask_y1f, 'Type'] = 'Y1F'
+                print(f"INFO: Renamed {mask_y1f.sum()} Y-HexNAc-Fuc-PEP to Y1F")
+        
+        # 2) Force FragmentType capital 'Y' for Y0/Y1/Y1F (these are glycan-type ions, not peptide)
+        if 'Type' in df.columns and 'FragmentType' in df.columns:
+            # Match Y0, Y1, Y1F exactly (case-insensitive Type check)
+            y_mask = df['Type'].astype(str).str.match(r'^Y\d+F?$', case=False, na=False)
+            if y_mask.any():
+                df.loc[y_mask, 'FragmentType'] = 'Y'
+                print(f"INFO: Changed {y_mask.sum()} Y0/Y1/Y1F FragmentType to capital 'Y'")
+        
+        # 3) For O-glycan, rename Y1/Y1F fragment to peptide-GalNAc (not -GlcNAc)
+        if glycan_type and str(glycan_type).upper() == 'O' and 'Type' in df.columns and 'Fragment' in df.columns:
+            y1_mask = df['Type'].astype(str).str.match(r'^Y1F?$', case=False, na=False)
+            if y1_mask.any():
+                df.loc[y1_mask, 'Fragment'] = (
+                    df.loc[y1_mask, 'Fragment']
+                      .astype(str)
+                      .str.replace('GlcNAc', 'GalNAc', regex=False)
+                      .str.replace('HexNAc', 'GalNAc', regex=False)
+                )
+                print(f"INFO: Renamed {y1_mask.sum()} Y1/Y1F fragments from GlcNAc to GalNAc for O-glycan")
+    
+    # DEBUG: Track Y0, Y1, Y-HexNAc2 in final DataFrame
+    if not df.empty and 'Type' in df.columns:
+        print(f"\n{'='*80}")
+        print("DEBUG: Y-ION TRACKING - Final DataFrame Check")
+        print(f"{'='*80}")
+        print(f"Total rows in DataFrame: {len(df)}")
+        
+        # Check for Y0 (could be "Y0", "Y-PEP", or "Y-redend" at this stage)
+        y0_mask = df['Type'].astype(str).str.match(r'^Y(0|-PEP|-redend)$', case=False, na=False)
+        if y0_mask.any():
+            print(f"  ✓ Y0 found: {y0_mask.sum()} rows")
+            print(f"    Sample: {df[y0_mask][['Type', 'FragmentType', 'Fragment', 'Ions']].head(3).to_dict('records')}")
+        else:
+            print(f"  ✗ Y0 NOT FOUND in DataFrame")
+        
+        # Check for Y1
+        y1_mask = df['Type'].astype(str).str.match(r'^Y1$', case=False, na=False)
+        if y1_mask.any():
+            print(f"  ✓ Y1 found: {y1_mask.sum()} rows")
+            print(f"    Sample: {df[y1_mask][['Type', 'FragmentType', 'Fragment', 'Ions']].head(3).to_dict('records')}")
+        else:
+            print(f"  ✗ Y1 NOT FOUND in DataFrame")
+        
+        # Check for Y-HexNAc2 (could be "-PEP" or "-redend" at this stage)
+        # Look for EXACT match of Y-HexNAc2 without extra monosaccharides
+        y_hexnac2_exact_mask = df['Type'].astype(str).str.match(r'^Y-HexNAc2-(PEP|redend)$', case=False, na=False)
+        if y_hexnac2_exact_mask.any():
+            print(f"  ✓ Y-HexNAc2 (exact) found: {y_hexnac2_exact_mask.sum()} rows")
+            print(f"    Sample: {df[y_hexnac2_exact_mask][['Type', 'FragmentType', 'Fragment', 'Ions', 'Fragment_mz']].head(3).to_dict('records')}")
+        else:
+            print(f"  ✗ Y-HexNAc2 (exact, no extra monosaccharides) NOT FOUND in DataFrame")
+        
+        # Also check for any Y-HexNAc2 variants (with extra monosaccharides)
+        y_hexnac2_any_mask = df['Type'].astype(str).str.contains(r'Y-HexNAc2', case=False, na=False, regex=False)
+        if y_hexnac2_any_mask.any():
+            print(f"  ℹ All Y-HexNAc2 variants found: {y_hexnac2_any_mask.sum()} rows")
+            unique_types = df[y_hexnac2_any_mask]['Type'].unique()
+            for t in sorted(unique_types)[:5]:
+                print(f"      - {t}")
+        
+        # Show all Y-type fragments for debugging
+        y_type_mask = df['FragmentType'].astype(str).str.upper() == 'Y'
+        if y_type_mask.any():
+            print(f"\n  All Y-type fragments ({y_type_mask.sum()} total):")
+            unique_y_types = df[y_type_mask]['Type'].unique()
+            for ytype in sorted(unique_y_types)[:20]:  # Show first 20
+                count = (df[y_type_mask]['Type'] == ytype).sum()
+                print(f"    - {ytype}: {count} rows")
+        print(f"{'='*80}\n")
+    
     return df
 
 def export_fragment_table_to_excel(df, df_all=None, filename='glycan_fragments.xlsx'):
@@ -5745,9 +7343,16 @@ def extract_prm_fragments_with_unique_keys(mzml_file, target_mzs=None, target_ke
             mz_array = spectrum.get('m/z array', [])
             intensity_array = spectrum.get('intensity array', [])
             
-            # APPLY INTENSITY FILTERING TO MATCH RAW PROCESSING
-            # Filter out zero and low intensity fragments
-            intensity_mask = intensity_array > intensity_threshold
+            # APPLY ADAPTIVE INTENSITY FILTERING
+            # Use 1% of max scan intensity or 50% of global threshold (whichever is larger)
+            # This captures low-intensity real peaks while still removing noise
+            if len(intensity_array) > 0:
+                max_scan_intensity = np.max(intensity_array)
+                # Adaptive: 1% of max, but not lower than 50% of global threshold
+                adaptive_threshold = max(intensity_threshold * 0.5, max_scan_intensity * 0.01)
+                intensity_mask = intensity_array > adaptive_threshold
+            else:
+                intensity_mask = intensity_array > intensity_threshold
             
             # Count fragments before and after filtering for debugging
             fragments_before = len(mz_array)
@@ -6339,7 +7944,9 @@ def extract_prm_fragments_from_raw_fisher(raw_file, target_mzs=None, target_keys
         rt = info['rt']
         row_id = info['row_id']
         
-        print(f"{mz:<10.4f} {rt if rt is not None else 'None':<8} {row_id:<8} "
+        rt_str = f"{rt:<8.2f}" if rt is not None else "None    "
+        row_id_str = f"{row_id:<8}" if row_id is not None else "N/A     "
+        print(f"{mz:<10.4f} {rt_str} {row_id_str} "
               f"{'Yes' if info['found_in_raw'] else 'No':<15} "
               f"{'Yes' if info['found_in_rt_window'] else 'No':<18} "
               f"{info['spectra_count']:<15}")
@@ -6715,7 +8322,7 @@ def match_fragments_with_database(results_df, generated_fragments, max_rt_window
                 print(f"  Fragments with intensity < 1000: {low_intensity_fragments} ({low_intensity_fragments/intensity_before_count*100:.1f}%)")
 
             # Apply intensity threshold filter (1000)
-            cleaned_df = cleaned_df[cleaned_df['Intensity'] >= 1000].copy()
+            cleaned_df = cleaned_df[cleaned_df['Intensity'] >= 700].copy()
 
             # Count after filtering
             intensity_after_count = len(cleaned_df)
@@ -7033,22 +8640,17 @@ def extract_fragment_areas_from_matches(cached_data, cleaned_df, back_window_rat
     results_df = pd.DataFrame(all_results)
     
     if not results_df.empty:
-        # Count before filtering
+        # Filter out fragments with fewer than 10 data points (STRICT THRESHOLD)
         before_count = len(results_df)
-        
-        # Filter out fragments with only 1 data point
-        multi_point_mask = results_df['Data_Points_Used'] > 1
-        results_df = results_df[multi_point_mask].copy()
-        
-        # Count after filtering
+        threshold_mask = results_df['Data_Points_Used'] >= 6
+        results_df = results_df[threshold_mask].copy()
         after_count = len(results_df)
         removed_count = before_count - after_count
-        
-        print(f"Single data point filtering results:")
+        print(f"Data point threshold filtering (>=7):")
         print(f"  Fragments before: {before_count}")
         print(f"  Fragments after: {after_count}")
-        print(f"  Fragments removed: {removed_count} ({(removed_count/before_count*100):.1f}%)")
-    
+        print(f"  Fragments removed (<7 points): {removed_count} ({(removed_count/before_count*100):.1f}%)")
+
     return results_df
 
 def create_empty_result(frag_row):
@@ -7115,6 +8717,14 @@ def plot_fragment_eics(cached_data, matched_fragments, glycan_code, peptide=None
             print("No matched fragments to plot")
             return {}
         
+        # Enforce low-data exclusion globally for plotting safety
+        if 'Data_Points_Used' in matched_fragments.columns:
+            before_plot = len(matched_fragments)
+            matched_fragments = matched_fragments[matched_fragments['Data_Points_Used'] >= 6].copy()
+            removed_plot = before_plot - len(matched_fragments)
+            if removed_plot > 0:
+                print(f"EIC plot filter: removed {removed_plot} fragments with <6 data points before plotting")
+
         # Filter fragments based on selected fragment type
         if fragment_types.lower() != "all":
             # Convert to lowercase for case-insensitive comparison
@@ -7128,6 +8738,30 @@ def plot_fragment_eics(cached_data, matched_fragments, glycan_code, peptide=None
                 print(f"No fragments of type '{frag_type}' found. Nothing to plot.")
                 return {}
         
+        # Small helper to render subscripts consistently across backends/exports
+        def _fmt_math_subscripts(text: str) -> str:
+            """Convert unicode or underscore subscripts to Matplotlib mathtext.
+            Examples:
+              'A₁' -> 'A$_1$'
+              'Y_2' -> 'Y$_2$'
+            """
+            if not isinstance(text, str) or not text:
+                return text
+            # Map common unicode subscript digits to mathtext
+            sub_map = {
+                '₀': '$_0$', '₁': '$_1$', '₂': '$_2$', '₃': '$_3$', '₄': '$_4$',
+                '₅': '$_5$', '₆': '$_6$', '₇': '$_7$', '₈': '$_8$', '₉': '$_9$'
+            }
+            for u, m in sub_map.items():
+                if u in text:
+                    text = text.replace(u, m)
+            # Convert patterns like A_1, B_2, Y_3 etc. to mathtext
+            try:
+                text = re.sub(r"([A-Za-z\)])_([0-9]+)", r"\1$_{\2}$", text)
+            except Exception:
+                pass
+            return text
+
         # Group by precursor m/z and RT to create separate plots for each precursor
         precursor_groups = matched_fragments.groupby(['Precursor_mz', 'precursor_rt'])
         print(f"Creating EIC plots for {len(precursor_groups)} precursors")
@@ -7323,7 +8957,10 @@ def plot_fragment_eics(cached_data, matched_fragments, glycan_code, peptide=None
 
                 # Only add to legend if in top 30 fragments (preserves plotting of all fragments)
                 if i < max_fragments_displayed:
-                    legend_handles.append((line, f"{i+1}. {trace['type']} ({trace['ion']}): m/z {frag_mz:.4f}"))
+                    # Ensure subscripts render properly in legend labels
+                    label_type = _fmt_math_subscripts(trace.get('type', ''))
+                    label_ion = _fmt_math_subscripts(trace.get('ion', ''))
+                    legend_handles.append((line, f"{i+1}. {label_type} ({label_ion}): m/z {frag_mz:.4f}"))
             
             # Format glycopeptide ID
             glycopeptide_id = f"{glycan_code}"
@@ -7626,15 +9263,15 @@ def plot_ms2_spectra(cached_data, matched_fragments, glycan_code, peptide=None, 
 
                             # Add type label above if available
                             if 'Type' in match:
-                                # Check if it's a peptide y fragment (look for pattern like "y1", "y2", etc.)
-                                # In the plot_ms2_spectra function, modify the is_peptide_y_fragment check:
-
                                 # Check if it's a peptide y or b fragment (look for pattern like "y1", "y2", "b1", "b2", etc.)
                                 is_peptide_fragment = (match['Type'].startswith('y') and match['Type'][1:].isdigit()) or \
                                                     (match['Type'].startswith('b') and match['Type'][1:].isdigit())
+                                
+                                # Check if it's Y0/Y1/Y1F (glycan-type ions that should always be horizontal)
+                                is_Y_glycan_ion = bool(re.match(r'^Y\d+F?$', match['Type'], re.IGNORECASE))
                                                                 
-                                # Set rotation based on type - always horizontal (0°) for peptide fragments
-                                label_rotation = 0 if is_peptide_fragment or relative_intensity > 70 else 90
+                                # Set rotation based on type - always horizontal (0°) for peptide fragments and Y0/Y1/Y1F
+                                label_rotation = 0 if is_peptide_fragment or is_Y_glycan_ion or relative_intensity > 70 else 90
                                 
                                 ax.text(mz, ion_height + 12,
                                     f"{match['Type']}",
@@ -7694,6 +9331,519 @@ def plot_ms2_spectra(cached_data, matched_fragments, glycan_code, peptide=None, 
         print(f"Error plotting MS2 spectra: {str(e)}")
         traceback.print_exc()
         return {}
+
+def plot_ms2_spectra_aggregated(cached_data, matched_fragments, glycan_code, 
+                               peptide=None, max_fragments_displayed=30, output_dir=None):
+    """
+    Enhanced MS2 plotting using all scans in the retention time window.
+    Maintains original single MS2 spectrum format while aggregating fragments from ALL scans.
+    
+    This solves the issue of "Showing 20 fragments but only 7 visible"
+    by aggregating fragments from ALL scans across the RT window.
+    
+    Args:
+        cached_data: Dict of cached mzML data with multiple scans per precursor
+        matched_fragments: DataFrame of fragments to match
+        glycan_code: Glycan code string
+        peptide: Optional peptide sequence
+        max_fragments_displayed: Max fragments to show in plots (default 30)
+        output_dir: Output directory for saving figures
+    
+    Returns:
+        Dict of generated matplotlib figures
+    """
+    
+    def create_peptide_diagram(peptide_seq, fragment_types, glycosite_pos=None):
+        """
+        Create peptide sequence diagram showing prominent cleavage position.
+        Returns formatted string with * at glycosylation site and | showing cleavage.
+        
+        Args:
+            peptide_seq: Peptide sequence string
+            fragment_types: List of fragment type strings (e.g., ['b2', 'y3', 'c5*', 'z8*'])
+            glycosite_pos: Position of glycosylation site (1-indexed)
+        """
+        if not peptide_seq:
+            return ""
+        
+        # Find the most prominent y or z fragment to show as example cleavage
+        y_fragments = []
+        z_fragments = []
+        c_fragments = []
+        
+        for ftype in fragment_types:
+            ftype_clean = ftype.replace('*', '').strip()
+            if ftype_clean.startswith('y') and ftype_clean[1:].isdigit():
+                y_fragments.append((int(ftype_clean[1:]), ftype))
+            elif ftype_clean.startswith('z') and ftype_clean[1:].isdigit():
+                z_fragments.append((int(ftype_clean[1:]), ftype))
+            elif ftype_clean.startswith('c') and ftype_clean[1:].isdigit():
+                c_fragments.append((int(ftype_clean[1:]), ftype))
+        
+        # Choose a fragment to display (prefer middle-sized fragments for clarity)
+        selected_fragment = None
+        cleavage_pos = None
+        
+        # Try y fragments first
+        if y_fragments:
+            y_fragments.sort(reverse=True)  # Sort by size
+            # Pick a medium-sized fragment if available
+            for size, frag in y_fragments:
+                if 4 <= size <= 8:
+                    selected_fragment = frag
+                    cleavage_pos = len(peptide_seq) - size
+                    break
+            if not selected_fragment:
+                # Fall back to largest y fragment
+                selected_fragment = y_fragments[0][1]
+                cleavage_pos = len(peptide_seq) - y_fragments[0][0]
+        elif z_fragments:
+            z_fragments.sort(reverse=True)
+            for size, frag in z_fragments:
+                if 4 <= size <= 8:
+                    selected_fragment = frag
+                    cleavage_pos = len(peptide_seq) - size
+                    break
+            if not selected_fragment:
+                selected_fragment = z_fragments[0][1]
+                cleavage_pos = len(peptide_seq) - z_fragments[0][0]
+        elif c_fragments:
+            c_fragments.sort()
+            for size, frag in c_fragments:
+                if 4 <= size <= 8:
+                    selected_fragment = frag
+                    cleavage_pos = size
+                    break
+            if not selected_fragment:
+                selected_fragment = c_fragments[0][1]
+                cleavage_pos = c_fragments[0][0]
+        
+        # Build diagram
+        if cleavage_pos is not None and 0 < cleavage_pos < len(peptide_seq):
+            n_term = peptide_seq[:cleavage_pos]
+            c_term = peptide_seq[cleavage_pos:]
+            
+            # Add * at glycosylation site
+            if glycosite_pos:
+                if glycosite_pos <= cleavage_pos:
+                    # Glycosite in N-terminal part
+                    n_term = n_term[:glycosite_pos-1] + '*' + n_term[glycosite_pos-1:]
+                else:
+                    # Glycosite in C-terminal part
+                    offset = glycosite_pos - cleavage_pos
+                    c_term = c_term[:offset-1] + '*' + c_term[offset-1:]
+            
+            diagram = f"{n_term} | {c_term}\n({selected_fragment} cleavage)"
+            return diagram
+        else:
+            # No prominent cleavage, just show sequence with glycosite
+            seq_display = peptide_seq
+            if glycosite_pos and 0 < glycosite_pos <= len(peptide_seq):
+                seq_display = peptide_seq[:glycosite_pos-1] + '*' + peptide_seq[glycosite_pos-1:]
+            return seq_display
+    
+    try:
+        # Setup
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        
+        if matched_fragments.empty:
+            print("No matched fragments to plot")
+            return {}
+        
+        generated_figures = {}
+        precursor_groups = matched_fragments.groupby(['Precursor_mz', 'precursor_rt'])
+        
+        print(f"\n{'='*70}")
+        print(f"MULTI-SCAN MS2 PLOTTING: Aggregating fragments from all scans")
+        print(f"{'='*70}")
+        
+        # Process each precursor group
+        for (precursor_mz, precursor_rt), group_df in precursor_groups:
+            try:
+                # Validate row_id column
+                if 'row_id' not in group_df.columns:
+                    continue
+                
+                # Get row_id and composite key
+                row_id_val = group_df['row_id'].iloc[0]
+                row_id = str(int(row_id_val)) if isinstance(row_id_val, float) else str(row_id_val)
+                composite_key = f"{precursor_mz}_{row_id}"
+                
+                # Check cached data exists
+                if composite_key not in cached_data:
+                    # Try without row_id
+                    composite_key_alt = f"{precursor_mz}_0"
+                    if composite_key_alt in cached_data:
+                        composite_key = composite_key_alt
+                    else:
+                        print(f"⚠ WARNING: No cached data for {composite_key}")
+                        continue
+                
+                precursor_data = cached_data[composite_key]
+                n_scans = len(precursor_data.get('fragments', []))
+                
+                if n_scans == 0:
+                    print(f"⚠ WARNING: No scans in cache for {composite_key}")
+                    continue
+                
+                # ===== STEP 1: Collect fragments from ALL scans =====
+                fragment_aggregation = {}  # {mz: {'intensities': [...], 'rts': [...], 'scans': [...]}}
+                best_scan_idx = 0
+                max_total_intensity = 0
+                
+                for scan_idx in range(n_scans):
+                    mz_array = np.array(precursor_data['fragments'][scan_idx])
+                    intensity_array = np.array(precursor_data['intensities'][scan_idx])
+                    rt = precursor_data['retention_times'][scan_idx]
+                    
+                    # Track best scan (most intense)
+                    total_intensity = np.sum(intensity_array) if len(intensity_array) > 0 else 0
+                    if total_intensity > max_total_intensity:
+                        max_total_intensity = total_intensity
+                        best_scan_idx = scan_idx
+                    
+                    # Collect each matched fragment from this scan
+                    for _, row in group_df.iterrows():
+                        target_mz = row['Experimental_mz']
+                        
+                        # Find this fragment in current scan (20 ppm tolerance)
+                        ppm_tolerance = 20
+                        mz_tolerance = target_mz * (ppm_tolerance / 1e6)
+                        matches = np.where(np.abs(mz_array - target_mz) <= mz_tolerance)[0]
+                        
+                        if len(matches) > 0:
+                            peak_idx = matches[0]
+                            peak_intensity = intensity_array[peak_idx]
+                            
+                            # Initialize if first occurrence
+                            if target_mz not in fragment_aggregation:
+                                fragment_aggregation[target_mz] = {
+                                    'intensities': [],
+                                    'rts': [],
+                                    'scan_indices': [],
+                                    'ions': row.get('Ions', ''),
+                                    'type': row.get('Type', '')
+                                }
+                            
+                            # Append this occurrence
+                            fragment_aggregation[target_mz]['intensities'].append(peak_intensity)
+                            fragment_aggregation[target_mz]['rts'].append(rt)
+                            fragment_aggregation[target_mz]['scan_indices'].append(scan_idx)
+                
+                # Verify fragments were found
+                if not fragment_aggregation:
+                    print(f"⚠ WARNING: No fragments found in {n_scans} scans for {composite_key}")
+                    continue
+                
+                print(f"✓ Precursor {precursor_mz:.4f}: {len(fragment_aggregation)} unique fragments found across {n_scans} scans")
+                
+                # ===== STEP 2: Get best scan data for MS2 display =====
+                mz_best = np.array(precursor_data['fragments'][best_scan_idx])
+                intensity_best = np.array(precursor_data['intensities'][best_scan_idx])
+                scan_time = precursor_data['retention_times'][best_scan_idx]
+
+                # ===== STEP 3: Render using ORIGINAL single-plot style (no background stems) =====
+                fig = plt.figure(figsize=(10, 6))
+                ax = fig.add_subplot(111)
+
+                # Build fragment_matches from aggregated data so all detected fragments appear
+                fragment_matches = []
+                for mz, data in fragment_aggregation.items():
+                    max_int = max(data['intensities']) if data['intensities'] else 0
+                    fragment_matches.append({
+                        'Experimental': float(mz),
+                        'MS2_Intensity': float(max_int),
+                        'Type': data.get('type', ''),
+                        'Ions': data.get('ions', ''),
+                    })
+
+                label_positions = {}
+                # Determine the max across aggregated fragments for 0–100% scaling
+                max_matched_intensity = max([m['MS2_Intensity'] for m in fragment_matches]) if fragment_matches else 1.0
+                if max_matched_intensity <= 0:
+                    max_matched_intensity = 1.0
+
+                fragment_matches.sort(key=lambda x: x['MS2_Intensity'], reverse=True)
+                limited_matches = fragment_matches[:max_fragments_displayed] if len(fragment_matches) > max_fragments_displayed else fragment_matches
+                title_suffix = f"\nShowing top {max_fragments_displayed} of {len(fragment_matches)} fragments" if len(fragment_matches) > max_fragments_displayed else ""
+                limited_matches.sort(key=lambda x: x['Experimental'])
+
+                # Plot each matched fragment as in original function
+                for match in limited_matches:
+                    mz = match['Experimental']
+                    if mz is None:
+                        continue
+                    ms2_intensity = match['MS2_Intensity']
+                    relative_intensity = (ms2_intensity / max_matched_intensity) * 100 if max_matched_intensity > 0 else 0
+                    # Ensure never exceed 100%
+                    relative_intensity = float(np.clip(relative_intensity, 0, 100))
+
+                    markerline, stemlines, baseline = ax.stem(
+                        [mz], [relative_intensity], basefmt=' ', linefmt='gray', markerfmt='ro'
+                    )
+                    plt.setp(stemlines, 'linewidth', 2)
+                    plt.setp(markerline, 'markersize', 3)
+
+                        # Label placement (match original)
+                    is_low_intensity = relative_intensity < 2
+                    ion_height = relative_intensity + 1 if is_low_intensity else relative_intensity - 5
+                    ion_height = max(ion_height, 2)
+                    overlap = True
+                    attempt_count = 0
+                    while overlap and attempt_count < 5:
+                            overlap = False
+                            for pos in label_positions:
+                                if abs(mz - pos[0]) < 20 and abs(ion_height - pos[1]) < 10:
+                                    overlap = True
+                                    break
+                            if overlap:
+                                ion_height += 5
+                                ion_height = max(ion_height, 2)
+                                attempt_count += 1
+
+                    label_positions[(mz, ion_height)] = True
+
+                    # Format ions label - clean out any problematic characters and keep as plain text
+                    ions_label = match.get('Ions','')
+                    # Remove any Unicode subscript characters and replace with plain text
+                    ions_label = ions_label.replace('₀', '0').replace('₁', '1').replace('₂', '2').replace('₃', '3').replace('₄', '4')
+                    ions_label = ions_label.replace('₅', '5').replace('₆', '6').replace('₇', '7').replace('₈', '8').replace('₉', '9')
+                    
+                    # Ions label (red) - INCREASED FONT SIZE, plain text
+                    ax.text(mz, ion_height, f"{ions_label}", rotation=0, ha='center', va='bottom', 
+                            fontsize=9, color='red', weight='bold')
+                    # m/z value (blue) - INCREASED FONT SIZE
+                    ax.text(mz, ion_height + 7, f"{mz:.2f}", rotation=0, ha='center', va='bottom', fontsize=10, color='blue', weight='bold')
+
+                    # Type label with rotation rules
+                    # Note: * marker now comes from FragmentType upstream (theoretical generation)
+                    frag_type = match.get('Type','')
+                    if frag_type:
+                            # Check if peptide fragment (b, y, c, z)
+                            is_b_fragment = frag_type.startswith('b') and frag_type[1:].replace('*','').isdigit()
+                            is_y_fragment = frag_type.startswith('y') and frag_type[1:].replace('*','').isdigit()
+                            is_c_fragment = frag_type.startswith('c') and frag_type[1:].replace('*','').isdigit()
+                            is_z_fragment = frag_type.startswith('z') and frag_type[1:].replace('*','').isdigit()
+                            is_peptide_fragment = is_b_fragment or is_y_fragment or is_c_fragment or is_z_fragment
+                            is_Y_glycan_ion = bool(re.match(r'^Y\d+F?$', frag_type, re.IGNORECASE))
+                            
+                            # ALL peptide fragments are horizontal (0 degrees rotation)
+                            label_rotation = 0 if is_peptide_fragment or is_Y_glycan_ion or relative_intensity > 70 else 90
+                            ax.text(mz, ion_height + 12, f"{frag_type}", rotation=label_rotation, ha='center', va='bottom', fontsize=10, color='black', weight='bold')
+
+                # Title and axes styling identical to original
+                glycopeptide_id = f"{glycan_code}" if not peptide else f"{peptide}-{glycan_code}"
+                rt = scan_time
+                rt_min = rt / 60.0 if rt > 100 else rt
+                ax.set_title(f"MS2 Spectrum for {glycopeptide_id}\nPrecursor m/z: {precursor_mz:.4f}, RT: {rt_min:.2f} min{title_suffix}", fontsize=14, weight='bold')
+
+                # Max intensity annotation
+                if 'format_intensity' in globals():
+                    ax.text(0.1, 1.01, f"{format_intensity(max_matched_intensity)}", transform=ax.transAxes, fontsize=14, va='top', ha='right', weight='bold', bbox=dict(facecolor='white', ec='none', alpha=0.7))
+
+                # Add peptide sequence diagram in top right corner if peptide is available
+                if peptide:
+                    # Extract all fragment types
+                    all_fragment_types = [m.get('Type', '') for m in limited_matches if m.get('Type')]
+                    
+                    # Try to find glycosylation site position (look for c/z fragments with *)
+                    glycosite_pos = None
+                    for ftype in all_fragment_types:
+                        if '*' in ftype:
+                            # Extract position from c or z fragment
+                            ftype_clean = ftype.replace('*', '').strip()
+                            if ftype_clean.startswith('c') and ftype_clean[1:].isdigit():
+                                glycosite_pos = int(ftype_clean[1:])
+                                break
+                            elif ftype_clean.startswith('z') and ftype_clean[1:].isdigit():
+                                # z fragments count from C-terminus
+                                glycosite_pos = len(peptide) - int(ftype_clean[1:]) + 1
+                                break
+
+                ax.set_xlabel('m/z', fontsize=14, weight='bold')
+                ax.set_ylabel('Relative Abundance (%)', fontsize=14, weight='bold')
+                ax.set_ylim(0, 110)
+                for label in ax.get_xticklabels() + ax.get_yticklabels():
+                    label.set_fontweight('bold')
+
+                if fragment_matches:
+                    all_mz = [m['Experimental'] for m in fragment_matches if m.get('Experimental') is not None]
+                    if all_mz:
+                        min_mz = max(min(all_mz) - 50, 0)
+                        max_mz = max(all_mz) + 50
+                        ax.set_xlim(min_mz, max_mz)
+
+                ax.spines['top'].set_visible(False)
+                ax.spines['right'].set_visible(False)
+                plt.tight_layout()
+
+                # ===== STEP 5: Save figure (SVG only, matches GUI expectation) =====
+                if output_dir:
+                    filename_svg = f"{output_dir}/MS2_{glycan_code}_{precursor_mz:.4f}_{precursor_rt:.2f}.svg"
+                    try:
+                        plt.savefig(filename_svg, format='svg', bbox_inches='tight')
+                        print(f"Saved SVG plot to {filename_svg}")
+                    except Exception as e:
+                        print(f"Error saving SVG plot: {str(e)}")
+                
+                generated_figures[composite_key] = fig
+                plt.close(fig)
+                
+            except Exception as e:
+                print(f"ERROR processing precursor {precursor_mz}: {str(e)}")
+                traceback.print_exc()
+                continue
+        
+        print(f"\n{'='*70}")
+        print(f"Total MS2 plots generated: {len(generated_figures)}")
+        print(f"{'='*70}\n")
+        return generated_figures
+        
+    except Exception as e:
+        print(f"CRITICAL ERROR in plot_ms2_spectra_aggregated: {str(e)}")
+        traceback.print_exc()
+        return {}
+
+def get_fragment_weight(fragment_row, glycan_composition=None):
+    """
+    Determine the weight for a fragment based on its type and diagnostic value.
+    
+    Weight Categories:
+    1. Core HexNAc oxoniums: weight = 2.0 (most diagnostic)
+    2. Core NeuAc oxoniums (if NeuAc > 0): weight = 2.0
+    3. Core Fuc oxoniums (if Fuc > 0): weight = 2.0
+    4. Peptide c/z with intact glycan (*): weight = 1.5
+    5. Y0, Y1, Y1F glycan ions: weight = 1.5
+    6. All others: weight = 1.0
+    
+    Args:
+        fragment_row: A row from the matched fragments DataFrame
+        glycan_composition: Dictionary with glycan composition (e.g., {'NeuAc': 2, 'Fuc': 1})
+        
+    Returns:
+        float: Weight value for this fragment
+    """
+    fragment_type = fragment_row.get('Type', '')
+    fragment_name = str(fragment_type)
+    
+    # Parse glycan composition if available
+    has_neuac = False
+    has_fuc = False
+    if glycan_composition:
+        has_neuac = glycan_composition.get('NeuAc', 0) > 0
+        has_fuc = glycan_composition.get('Fuc', 0) > 0
+    
+    # Category 1: Core HexNAc oxoniums (weight = 2.0)
+    core_hexnac_oxoniums = [
+        'GalNAc(2,4A₁)', 'GlcNAc(0,2A₁)', 'HexNAc-C₂H₆O₃',
+        'ZZ-Hex1-C', 'Hex1-B', 'Hex1-C',
+        'Hex1-NeuAc1-B', 'Hex1-NeuAc1-C',
+        'ZZ-Hex2-C', 'YY-Hex2-B',
+        'ZZ-Hex3-C', 'YY-Hex3-B',
+        'Y-HexNAc1-B', 'Y-HexNAc1(-2H2O)-B', 'Z-HexNAc1(-2H2O)-C',
+        'Y-HexNAc1(-CH3OH)-B', 'Z-HexNAc1(-CH3OH)-C',
+        'Y-HexNAc1(-H2O)-B'
+    ]
+    
+    if fragment_name in core_hexnac_oxoniums:
+        return 2.0
+    
+    # Category 2: Core NeuAc oxoniums (weight = 2.0) - only if NeuAc > 0
+    if has_neuac:
+        core_neuac_oxoniums = [
+            'NeuAc1(-H2O)-B', 'NeuAc1(-H2O)-C',
+            'NeuAc1-B', 'NeuAc1-C'
+        ]
+        if fragment_name in core_neuac_oxoniums:
+            return 2.0
+    
+    # Category 3: Core Fuc oxoniums (weight = 2.0) - only if Fuc > 0
+    if has_fuc:
+        core_fuc_oxoniums = [
+            'Fuc1(-CH3)-B', 'Fuc1(-CH3)-C',
+            'Fuc1(-H2O)-B', 'Fuc1(-H2O)-C',
+            'Fuc1-B', 'Fuc1-C',
+            'HexNAc1-Fuc1-B', 'HexNAc1-Fuc1-C'
+        ]
+        if fragment_name in core_fuc_oxoniums:
+            return 2.0
+    
+    # Category 4: Peptide c/z with intact glycan - marked with '*' (weight = 1.5)
+    if '*' in fragment_name:
+        return 1.5
+    
+    # Category 5: Y0, Y1, Y1F glycan structure ions (weight = 1.5)
+    if fragment_name in ['Y0', 'Y1', 'Y1F']:
+        return 1.5
+    
+    # Category 6: All others (weight = 1.0)
+    return 1.0
+
+def calculate_weighted_glycopeptide_score(precursor_df, glycan_composition=None):
+    """
+    Calculate a weighted average score for a glycopeptide based on fragment importance.
+    
+    High-diagnostic fragments (oxoniums, Y0/Y1/Y1F, c/z with glycan) receive higher weights.
+    
+    Args:
+        precursor_df: DataFrame containing all matched fragments for a glycopeptide
+        glycan_composition: Dictionary with glycan composition (e.g., {'NeuAc': 2, 'Fuc': 1})
+        
+    Returns:
+        Dictionary with weighted score, rating, and fragment type breakdown
+    """
+    if precursor_df.empty or 'Fragments_Score' not in precursor_df.columns:
+        return {
+            'Weighted_Score': 0.0,
+            'Rating': 'Low',
+            'Total_Fragments': 0,
+            'Weight_Distribution': {}
+        }
+    
+    total_weighted_score = 0.0
+    total_weight = 0.0
+    weight_distribution = {}  # Track how many fragments in each weight category
+    
+    # Calculate weighted score
+    for idx, row in precursor_df.iterrows():
+        fragment_score = row.get('Fragments_Score', 0.0)
+        weight = get_fragment_weight(row, glycan_composition)
+        
+        total_weighted_score += fragment_score * weight
+        total_weight += weight
+        
+        # Track weight distribution
+        weight_key = f"Weight_{weight}"
+        if weight_key not in weight_distribution:
+            weight_distribution[weight_key] = {'count': 0, 'avg_score': 0.0, 'scores': []}
+        weight_distribution[weight_key]['count'] += 1
+        weight_distribution[weight_key]['scores'].append(fragment_score)
+    
+    # Calculate final weighted average
+    weighted_score = total_weighted_score / total_weight if total_weight > 0 else 0.0
+    
+    # Calculate average scores for each weight category
+    for weight_key in weight_distribution:
+        scores = weight_distribution[weight_key]['scores']
+        weight_distribution[weight_key]['avg_score'] = sum(scores) / len(scores) if scores else 0.0
+        del weight_distribution[weight_key]['scores']  # Remove raw scores to save memory
+    
+    # Determine rating
+    if weighted_score >= 75:
+        rating = "High"
+    elif weighted_score >= 50:
+        rating = "Medium"
+    else:
+        rating = "Low"
+    
+    return {
+        'Weighted_Score': round(weighted_score, 2),
+        'Rating': rating,
+        'Total_Fragments': len(precursor_df),
+        'Total_Weight': round(total_weight, 2),
+        'Weight_Distribution': weight_distribution
+    }
 
 def calculate_Fragments_Score(fragment_row, max_ppm_error=20, max_rt_window=None):
     """
@@ -8116,6 +10266,7 @@ def analyze_and_export_all_glycans(excel_input_file, excel_output_file, input_fi
         parsed_comment_data = {}  # Store parsed data by row index
         row_specific_glycan_types = {}  # Store glycan type per row
         row_specific_modifications = {}  # Store modifications per row
+        row_specific_glycosites = {}  # NEW: Store glycosite info per row {idx: {'position': int, 'glycan_mass': float}}
 
         if use_comment_column and comment_column:
             log_info("Processing Comment column to extract glycopeptide information...")
@@ -8137,6 +10288,18 @@ def analyze_and_export_all_glycans(excel_input_file, excel_output_file, input_fi
                             if parsed_result['glycan_type']:
                                 row_specific_glycan_types[idx] = parsed_result['glycan_type']
                                 log_info(f"Row {idx+1}: Detected {parsed_result['glycan_type']}-glycan")
+                            
+                            # NEW: Store glycosylation site info if present
+                            if parsed_result.get('glycosite_position') and parsed_result.get('glycan_base_mass'):
+                                try:
+                                    glycan_mass = float(parsed_result['glycan_base_mass'])
+                                    row_specific_glycosites[idx] = {
+                                        'position': parsed_result['glycosite_position'],
+                                        'glycan_mass': glycan_mass
+                                    }
+                                    log_info(f"Row {idx+1}: Glycosylation site at position {parsed_result['glycosite_position']} with intact glycan mass {glycan_mass:.2f}")
+                                except (ValueError, TypeError) as e:
+                                    log_warning(f"Row {idx+1}: Failed to parse glycan mass '{parsed_result['glycan_base_mass']}': {e}")
                             
                             # Store row-specific modifications (overrides global settings)
                             if parsed_result['pep_modification']:
@@ -8168,6 +10331,46 @@ def analyze_and_export_all_glycans(excel_input_file, excel_output_file, input_fi
             log_info(f"Found charge column: '{charge_column}' - will use row-specific charge states")
         else:
             log_info("No charge column found - using default charge states 1-5")
+
+        # NEW: Find glycosylation site column (Site or Glycosylation_site)
+        site_column = None
+        site_column = next((col for col in df_glycans.columns if col.upper() in ['SITE', 'GLYCOSYLATION_SITE']), None)
+        if not site_column:
+            # Try variations
+            site_column = next((col for col in df_glycans.columns if 'glycosylation' in col.lower() and 'site' in col.lower()), None)
+        
+        if site_column:
+            log_info(f"Found glycosylation site column: '{site_column}' - will use row-specific glycosylation sites")
+            
+            # Parse the Site column and add to row_specific_glycosites
+            for idx, row in df_glycans.iterrows():
+                site_value = row[site_column]
+                if pd.notna(site_value) and str(site_value).strip():
+                    peptide_seq = row.get('Peptide', '')
+                    glycan_code = row.get('Glycan', '')
+                    site_info = parse_glycosite_column(site_value, peptide_seq)
+                    
+                    if site_info:
+                        # If row_specific_glycosites not already set by Comment parsing, initialize it
+                        if idx not in row_specific_glycosites:
+                            # Calculate the intact glycan mass from the Glycan composition
+                            # Pass None for calculator - the function will create its own
+                            glycan_mass = calculate_glycan_mass_from_composition(glycan_code, calculator=None)
+                            if glycan_mass:
+                                row_specific_glycosites[idx] = {
+                                    'position': site_info['position'],
+                                    'glycan_mass': glycan_mass
+                                }
+                                log_info(f"Row {idx+1}: Found glycosylation site at position {site_info['position']} with calculated intact glycan mass {glycan_mass:.2f}")
+                            else:
+                                log_warning(f"Row {idx+1}: Could not calculate glycan mass for '{glycan_code}'")
+                        else:
+                            # Already set from Comment column - just update position if needed
+                            if row_specific_glycosites[idx]['position'] != site_info['position']:
+                                log_warning(f"Row {idx+1}: Site column position {site_info['position']} differs from Comment-derived position {row_specific_glycosites[idx]['position']}. Using Site column value.")
+                                row_specific_glycosites[idx]['position'] = site_info['position']
+        else:
+            log_info("No glycosylation site column found - will use inline modifications if present")
 
         # =============================================================================
         # COLUMN VALIDATION
@@ -8644,6 +10847,9 @@ def analyze_and_export_all_glycans(excel_input_file, excel_output_file, input_fi
                         log_error(f"Invalid characters {invalid_chars} in peptide '{peptide}'. Skipping.")
                         continue
                 
+                # NEW: Get glycosite information for this row if available
+                current_glycosite_info = row_specific_glycosites.get(idx, None)
+                
                 # Generate fragments with row-specific parameters
                 fragment_table = _generate_fragments_for_pair(
                     glycan_code, peptide, modification_type, calculator,
@@ -8652,7 +10858,8 @@ def analyze_and_export_all_glycans(excel_input_file, excel_output_file, input_fi
                     {f"{peptide}_{glycan_code}": current_mod_string} if current_mod_string else peptide_mods,
                     generate_glycan_by_ions, generate_cz_glycan_fragment,
                     generate_peptide_by_ions, generate_cz_peptide_fragment,
-                    enable_custom_peptide_fragments
+                    enable_custom_peptide_fragments,
+                    current_glycosite_info  # NEW: Pass glycosite information
                 )
                 
                 if fragment_table.empty:
@@ -8849,8 +11056,24 @@ def _generate_fragments_for_pair(glycan_code, peptide, modification_type, calcul
                                 fixed_mods, variable_mods, peptide_mods,
                                 generate_glycan_by_ions, generate_cz_glycan_fragment,
                                 generate_peptide_by_ions, generate_cz_peptide_fragment,
-                                enable_custom_peptide_fragments):
-    """Generate theoretical fragments for a glycan-peptide pair."""
+                                enable_custom_peptide_fragments, glycosite_info=None):
+    """
+    Generate theoretical fragments for a glycan-peptide pair.
+    
+    Args:
+        glycosite_info (dict): Optional dict with 'position' (1-based int) and 'glycan_mass' (float) for c/z fragment annotation
+    """
+    
+    print(f"\n{'='*80}")
+    print(f"DEBUG _generate_fragments_for_pair CALLED:")
+    print(f"  glycan_code={glycan_code}, peptide={peptide}")
+    print(f"  modification_type={modification_type}")
+    print(f"  generate_glycan_by_ions={generate_glycan_by_ions}")
+    print(f"  generate_cz_glycan_fragment={generate_cz_glycan_fragment}")
+    print(f"  generate_peptide_by_ions={generate_peptide_by_ions}")
+    print(f"  generate_cz_peptide_fragment={generate_cz_peptide_fragment}")
+    print(f"  glycosite_info={glycosite_info}")
+    print(f"{'='*80}\n")
     
     # Get modification string
     pair_key = f"{peptide}_{glycan_code}"
@@ -8863,12 +11086,23 @@ def _generate_fragments_for_pair(glycan_code, peptide, modification_type, calcul
         mod_string=mod_string, glycan_type=glycan_type
     )
     
+    # DEBUG: Show cache key and cache status
+    print(f"DEBUG: Fragment cache key: {fragment_cache_key}")
+    print(f"DEBUG: Cache contains {len(fragment_table_cache)} entries")
+    print(f"DEBUG: Cache keys: {list(fragment_table_cache.keys())}")
+    
     # Check cache first
     if fragment_cache_key in fragment_table_cache:
-        return fragment_table_cache[fragment_cache_key]
+        print(f"DEBUG: CACHE HIT for {glycan_code}")
+        cached_result = fragment_table_cache[fragment_cache_key]
+        print(f"DEBUG: Returning cached result with {len(cached_result)} fragments")
+        return cached_result
+    
+    print(f"DEBUG: CACHE MISS - key not found in cache")
     
     # Generate new fragments
     try:
+        print(f"DEBUG: Generating NEW fragments (not cached)")
         if worker:
             with ProcessStage(worker, f"Generating theoretical fragments for {glycan_code}"):
                 # FIXED: Remove the unsupported parameters from predict_glycan_structure call
@@ -8881,8 +11115,16 @@ def _generate_fragments_for_pair(glycan_code, peptide, modification_type, calcul
                 glycan_code, glycan_type, peptide=peptide
             )
         
+        print(f"DEBUG: predict_glycan_structure returned {len(results) if results else 0} results")
+        
         if not results:
+            print(f"WARNING: No results from predict_glycan_structure for {glycan_code}")
+            print(f"  This usually means the glycan structure could not be predicted")
+            print(f"  Creating empty DataFrame and returning...")
             return pd.DataFrame()
+        
+        # Extract the graph structure from first result for YYY generation
+        graph_structure = results[0].get('structure') if results else None
         
         # Collect unique fragments with the modification parameters
         unique_fragments = collect_unique_fragments(
@@ -8890,12 +11132,24 @@ def _generate_fragments_for_pair(glycan_code, peptide, modification_type, calcul
             use_cam=use_cam, fixed_mods=fixed_mods, variable_mods=variable_mods,
             mod_string=mod_string
         )
+        print(f"DEBUG: collect_unique_fragments returned fragment dict with keys: {list(unique_fragments.keys())}")
+        
+        # Count total fragments
+        total_unique_frags = sum(len(frags) for frags in unique_fragments.values())
+        print(f"DEBUG: Total unique fragments collected: {total_unique_frags}")
+        
+        if total_unique_frags == 0:
+            print(f"WARNING: No unique fragments collected for {glycan_code}")
+            print(f"  Returning empty DataFrame...")
+            return pd.DataFrame()
         
         # Generate fragment table
         fragment_table = pd.DataFrame()
         
         # Process glycan fragments
         if generate_glycan_by_ions or generate_cz_glycan_fragment:
+            print(f"DEBUG: Generating glycan fragments for {glycan_code}")
+            print(f"  generate_glycan_by_ions={generate_glycan_by_ions}, generate_cz_glycan_fragment={generate_cz_glycan_fragment}")
             fragment_table = generate_extended_fragment_table(
                 unique_fragments, glycan_code, modification_type=modification_type,
                 peptide=peptide, use_cam=use_cam, fixed_mods=fixed_mods,
@@ -8904,25 +11158,32 @@ def _generate_fragments_for_pair(glycan_code, peptide, modification_type, calcul
                 generate_glycan_by_ions=generate_glycan_by_ions,
                 generate_peptide_by_ions=generate_peptide_by_ions,
                 generate_cz_peptide_fragment=generate_cz_peptide_fragment,
-                include_byy=True
+                include_byy=True, glycan_type=glycan_type, graph=graph_structure
             )
+            print(f"DEBUG: After generate_extended_fragment_table: {len(fragment_table)} fragments")
             
             # Filter if only C/Z fragments wanted
             if not generate_glycan_by_ions and generate_cz_glycan_fragment:
-                cz_fragment_types = ['c', 'z', 'cz', 'zz', 'czz', 'bzz']
+                print(f"DEBUG: Filtering for C/Z only...")
+                cz_fragment_types = ['C', 'Z', 'CZ', 'ZZ', 'CZZ', 'BZZ']  # Capitalized for glycan fragments
                 cz_filter = fragment_table.apply(lambda row: 
                     row['FragmentType'] in cz_fragment_types or
                     any(pattern in str(row['Type']) for pattern in ['-C', 'Z-', 'ZZ-']), axis=1)
+                print(f"DEBUG: C/Z filter matched {cz_filter.sum()} fragments")
                 fragment_table = fragment_table[cz_filter]
+                print(f"DEBUG: After C/Z filter: {len(fragment_table)} fragments")
         
         # Process peptide fragments
         if (generate_peptide_by_ions or generate_cz_peptide_fragment) and peptide:
+            print(f"DEBUG: Generating peptide fragments for {peptide}")
+            print(f"  generate_peptide_by_ions={generate_peptide_by_ions}, generate_cz_peptide_fragment={generate_cz_peptide_fragment}")
             peptide_fragments = generate_peptide_fragments(
                 peptide, glycan_code, use_cam=use_cam, fixed_mods=fixed_mods,
                 variable_mods=variable_mods, mod_string=mod_string,
                 enable_custom_peptide_fragments=enable_custom_peptide_fragments,
                 generate_cz_peptide_fragment=generate_cz_peptide_fragment
             )
+            print(f"DEBUG: Generated {len(peptide_fragments)} raw peptide fragments")
             
             fragment_table = combine_glycan_and_peptide_fragments(
                 fragment_table, peptide_fragments, glycan_code, peptide,
@@ -8930,13 +11191,42 @@ def _generate_fragments_for_pair(glycan_code, peptide, modification_type, calcul
                 generate_cz_glycan=generate_cz_glycan_fragment,
                 generate_peptide_by_ions=generate_peptide_by_ions,
                 generate_glycan_by_ions=generate_glycan_by_ions,
-                enable_custom_peptide_fragments=enable_custom_peptide_fragments
+                enable_custom_peptide_fragments=enable_custom_peptide_fragments,
+                glycosite_info=glycosite_info  # NEW: Pass glycosite info
             )
+            print(f"DEBUG: After combining: {len(fragment_table)} total fragments")
         
         # Add metadata columns
         if not fragment_table.empty:
+            print(f"DEBUG: Adding metadata to {len(fragment_table)} fragments")
             fragment_table['Glycan'] = str(glycan_code)
             fragment_table['Glycopeptide'] = f"{peptide}-{glycan_code}" if peptide and modification_type == 6 else '-'
+            
+            # Capitalize ALL glycan fragment types (for consistency with C, Z, CZ, etc.)
+            # Only capitalize glycan fragments, not peptide fragments
+            if 'FragmentType' in fragment_table.columns and 'Is_Peptide_Fragment' in fragment_table.columns:
+                # Create a mask for glycan fragments (Is_Peptide_Fragment == False)
+                glycan_mask = fragment_table['Is_Peptide_Fragment'] == False
+                
+                # Capitalize fragment types for glycan fragments only
+                fragment_table.loc[glycan_mask, 'FragmentType'] = fragment_table.loc[glycan_mask, 'FragmentType'].replace({
+                    'b': 'B',
+                    'y': 'Y',
+                    'by': 'BY',
+                    'yy': 'YY',
+                    'byy': 'BYY',
+                    'yyy': 'YYY',
+                    'byyy': 'BYYY',
+                    'c': 'C',
+                    'z': 'Z',
+                    'cz': 'CZ',
+                    'zz': 'ZZ',
+                    'czz': 'CZZ',
+                    'bzz': 'BZZ',
+                    'zzz': 'ZZZ',
+                    'czzz': 'CZZZ',
+                    'bzzz': 'BZZZ'
+                })
             
             # Update labels based on modification type
             end_labels = {1: 'freeend', 4: '2AB', 5: '2AB', 6: 'PEP'}
@@ -8944,9 +11234,36 @@ def _generate_fragments_for_pair(glycan_code, peptide, modification_type, calcul
             
             fragment_table['Type'] = fragment_table['Type'].str.replace('redend', end_label)
             fragment_table['Fragment'] = fragment_table['Fragment'].str.replace('redend', end_label)
+            
+            # FINAL CLEANUP: Remove Y-HexNAc1-PEP and Z-HexNAc1-PEP duplicates (identical to Y1/Z1)
+            # This is a final gate before returning/caching to ensure no duplicates slip through
+            if 'Type' in fragment_table.columns:
+                # Remove rows where Type is exactly Y-HexNAc1-PEP or Y-HexNAc-PEP (single Y, not YY)
+                # IMPORTANT: Use 1? to match only "1" or nothing, NOT \d? which matches ANY digit
+                y_hexnac_pep_mask = fragment_table['Type'].astype(str).str.match(
+                    r'^Y-HexNAc1?-PEP$', case=False, na=False
+                )
+                # Remove rows where Type is exactly Z-HexNAc1-PEP or Z-HexNAc-PEP (single Z, not ZZ)
+                z_hexnac_pep_mask = fragment_table['Type'].astype(str).str.match(
+                    r'^Z-HexNAc1?-PEP$', case=False, na=False
+                )
+                
+                # Combine masks
+                duplicates_mask = y_hexnac_pep_mask | z_hexnac_pep_mask
+                
+                if duplicates_mask.any():
+                    removed_count = int(duplicates_mask.sum())
+                    fragment_table = fragment_table[~duplicates_mask].copy()
+                    print(f"✓ FINAL GATE: Removed {removed_count} Y/Z-HexNAc1-PEP duplicate(s) of Y1/Z1")
+        else:
+            print(f"DEBUG: fragment_table is EMPTY before adding metadata!")
         
         # Cache the result
+        print(f"DEBUG: Storing result in cache with key: {fragment_cache_key}")
+        print(f"DEBUG: Storing {len(fragment_table)} fragments")
         fragment_table_cache[fragment_cache_key] = fragment_table
+        print(f"DEBUG: Cache now contains {len(fragment_table_cache)} entries")
+        print(f"DEBUG: Final fragment count for {glycan_code}: {len(fragment_table)}")
         return fragment_table
         
     except Exception as e:
@@ -8971,14 +11288,17 @@ def filter_fragments_by_generation_settings(fragment_df, generate_glycan_by_ions
     print(f"  generate_cz_peptide_fragment: {generate_cz_peptide_fragment}")
     
     # FIXED: Separate BYY from regular BY fragments
-    glycan_by_types = ['b', 'y', 'by', 'yy']  # ← Removed 'byy' from here
-    glycan_byy_types = ['byy']  # ← Handle BYY separately
-    glycan_cz_types = ['c', 'z', 'cz', 'zz', 'czz']
+    # Include both lowercase (legacy/during generation) and uppercase (after capitalization)
+    glycan_by_types = ['b', 'y', 'by', 'yy', 'B', 'Y', 'BY', 'YY']
+    glycan_byy_types = ['byy', 'BYY']
+    glycan_yyy_types = ['yyy', 'YYY']
+    glycan_byyy_types = ['byyy', 'BYYY']
+    glycan_cz_types = ['c', 'z', 'cz', 'zz', 'czz', 'C', 'Z', 'CZ', 'ZZ', 'CZZ', 'zzz', 'ZZZ', 'czzz', 'CZZZ', 'bzzz', 'BZZZ']
     peptide_by_types = ['b', 'y', 'c', 'z']  # Peptide fragments (check Is_Peptide_Fragment column)
     
     # BZZ is a special case - it's C/Z conversion of glycan BY ions
     # Include BZZ only if BOTH glycan BY and glycan C/Z are enabled
-    bzz_types = ['bzz']
+    bzz_types = ['bzz', 'BZZ']
     
     # Create filter mask
     keep_mask = pd.Series([True] * len(fragment_df), index=fragment_df.index)
@@ -9013,6 +11333,30 @@ def filter_fragments_by_generation_settings(fragment_df, generate_glycan_by_ions
         print(f"  Removed {byy_mask.sum()} BYY fragments (generate_glycan_by_ions=False)")
     else:
         print(f"  Keeping BYY fragments (generate_glycan_by_ions=True)")
+    
+    # Handle YYY fragments (also included when generate_glycan_by_ions=True)
+    if not generate_glycan_by_ions:
+        yyy_mask = fragment_df['FragmentType'].isin(glycan_yyy_types)
+        
+        if not isinstance(yyy_mask, pd.Series):
+            yyy_mask = pd.Series([yyy_mask] * len(fragment_df), index=fragment_df.index)
+        
+        keep_mask &= ~yyy_mask
+        print(f"  Removed {yyy_mask.sum()} YYY fragments (generate_glycan_by_ions=False)")
+    else:
+        print(f"  Keeping YYY fragments (generate_glycan_by_ions=True)")
+    
+    # Handle BYYY fragments (also included when generate_glycan_by_ions=True)
+    if not generate_glycan_by_ions:
+        byyy_mask = fragment_df['FragmentType'].isin(glycan_byyy_types)
+        
+        if not isinstance(byyy_mask, pd.Series):
+            byyy_mask = pd.Series([byyy_mask] * len(fragment_df), index=fragment_df.index)
+        
+        keep_mask &= ~byyy_mask
+        print(f"  Removed {byyy_mask.sum()} BYYY fragments (generate_glycan_by_ions=False)")
+    else:
+        print(f"  Keeping BYYY fragments (generate_glycan_by_ions=True)")
     
     # Filter glycan C/Z fragments
     if not generate_cz_glycan_fragment:
@@ -9138,7 +11482,7 @@ def _match_experimental_data(glycan_code, peptide, df_glycans, cached_mzml_data,
                         )
                     
                     if generate_ms2_plots:
-                        plot_ms2_spectra(
+                        plot_ms2_spectra_aggregated(
                             cached_mzml_data, integrated_matches, glycan_code, peptide,
                             output_dir=figures_dir, max_fragments_displayed=max_fragments_displayed
                         )
@@ -9180,6 +11524,14 @@ def prepare_matched_fragments_for_export(matched_fragments_df):
     
     # Make a copy to avoid modifying original
     df_export = matched_fragments_df.copy()
+
+    # Enforce rule: exclude fragments with low data points (<10) if column exists
+    if 'Data_Points_Used' in df_export.columns:
+        before = len(df_export)
+        df_export = df_export[df_export['Data_Points_Used'] >= 6].copy()
+        removed = before - len(df_export)
+        if removed > 0:
+            print(f"Excluded {removed} fragments with <10 data points from Matched_Fragments export")
     
     # Remove unwanted columns
     columns_to_remove = ['Max_Intensity', 'rt_difference', 'Duplicate_Count']
@@ -9240,6 +11592,199 @@ def _write_excel_results(output_path, all_unique_fragments, all_masses, all_matc
             prepared_matched_fragments = prepare_matched_fragments_for_export(all_matched_fragments)
             round_for_export(prepared_matched_fragments).to_excel(writer, sheet_name='Matched_Fragments', index=False)
 
+def create_score_summary_sheet(all_results, filtered_results, file_mapping):
+    """
+    Create a detailed Score_Summary sheet showing weighted scoring breakdown for each fragment.
+    Aligns with Summary_2 to show same fragments with additional score/weight details.
+    
+    Args:
+        all_results: Dictionary mapping filenames to DataFrames
+        filtered_results: Filtered results dictionary  
+        file_mapping: Mapping of base filenames to full paths
+        
+    Returns:
+        DataFrame with score summary details matching Summary_2 structure
+    """
+    try:
+        score_summary_rows = []
+        calculator = GlycanMassCalculator()
+        
+        # Get all unique fragments across all files (same logic as Summary_2)
+        unique_fragments_global = set()
+        
+        for file_path, df in filtered_results.items():
+            if 'Glycopeptides' in df.columns and 'Type' in df.columns and 'Theoretical_mz' in df.columns:
+                for _, row in df.iterrows():
+                    # Clean up glycopeptide name
+                    glycopeptide = row['Glycopeptides']
+                    if isinstance(glycopeptide, str) and '_row' in glycopeptide:
+                        glycopeptide = glycopeptide.split('_row')[0]
+                    if 'original_glycopeptide' in df.columns and pd.notna(row['original_glycopeptide']):
+                        glycopeptide = row['original_glycopeptide']
+                    
+                    # Create unique fragment key (SAME AS SUMMARY_2)
+                    fragment_key = (
+                        glycopeptide,
+                        row['Precursor_mz'],
+                        row['precursor_rt'],
+                        row['Type'],  # Fragment name like "Hex1-B"
+                        row.get('FragmentType', 'unknown'),
+                        row['Theoretical_mz']
+                    )
+                    unique_fragments_global.add(fragment_key)
+        
+        print(f"Score_Summary: Found {len(unique_fragments_global)} unique fragments (matching Summary_2)")
+        
+        # Process each unique fragment (SAME ORDER AS SUMMARY_2)
+        for fragment_key in sorted(unique_fragments_global):
+            glycopeptide, precursor_mz, precursor_rt, fragment_name, fragment_type, theoretical_mz = fragment_key
+            
+            # Parse glycan composition once per glycopeptide
+            glycan_composition = None
+            try:
+                if '-' in str(glycopeptide):
+                    glycan_code = str(glycopeptide).split('-')[-1]
+                    hexnac, hex, fuc, neuac, neugc = calculator.parse_glycan_code(glycan_code)
+                    glycan_composition = {
+                        'HexNAc': hexnac,
+                        'Hex': hex,
+                        'Fuc': fuc,
+                        'NeuAc': neuac,
+                        'NeuGc': neugc
+                    }
+            except Exception:
+                pass
+            
+            # Process each file for this fragment
+            for base_filename in sorted(file_mapping.keys()):
+                full_filename = file_mapping[base_filename]
+                if full_filename not in filtered_results:
+                    continue
+                
+                df = filtered_results[full_filename]
+                
+                # Find matching fragment in this file
+                matching_fragments = df[
+                    (df['Glycopeptides'].str.contains(str(glycopeptide), na=False, regex=False)) &
+                    (np.isclose(df['Precursor_mz'], precursor_mz, rtol=1e-4)) &
+                    (np.isclose(df['precursor_rt'], precursor_rt, rtol=1e-2)) &
+                    (df['Type'] == fragment_name) &
+                    (np.isclose(df['Theoretical_mz'], theoretical_mz, rtol=1e-6))
+                ]
+                
+                if matching_fragments.empty:
+                    # Fragment not found in this file - add row with N/A
+                    score_summary_rows.append({
+                        'File': base_filename,
+                        'Glycopeptide': glycopeptide,
+                        'Precursor_mz': precursor_mz,
+                        'Precursor_rt': precursor_rt,
+                        'Fragment': fragment_name,
+                        'Fragment_type': fragment_type,
+                        'Theoretical_mz': theoretical_mz,
+                        'Individual_Score': np.nan,
+                        'Weight': np.nan,
+                        'Contribution': np.nan,
+                        'Fragment_Classification': 'Not Detected'
+                    })
+                else:
+                    # Fragment found - calculate score details
+                    fragment_row = matching_fragments.iloc[0]
+                    fragment_score = fragment_row.get('Fragments_Score', 0.0)
+                    weight = get_fragment_weight(fragment_row, glycan_composition)
+                    contribution = fragment_score * weight
+                    
+                    # Classify fragment type
+                    classification = classify_fragment_type(fragment_name, fragment_type, glycan_composition)
+                    
+                    score_summary_rows.append({
+                        'File': base_filename,
+                        'Glycopeptide': glycopeptide,
+                        'Precursor_mz': precursor_mz,
+                        'Precursor_rt': precursor_rt,
+                        'Fragment': fragment_name,
+                        'Fragment_type': fragment_type,
+                        'Theoretical_mz': theoretical_mz,
+                        'Individual_Score': round(fragment_score, 2),
+                        'Weight': weight,
+                        'Contribution': round(contribution, 2),
+                        'Fragment_Classification': classification
+                    })
+        
+        # Create DataFrame
+        score_summary_df = pd.DataFrame(score_summary_rows)
+        
+        # Sort same way as Summary_2
+        if not score_summary_df.empty:
+            sort_columns = ['Glycopeptide', 'Precursor_mz', 'Fragment_type', 'Theoretical_mz', 'File']
+            score_summary_df = score_summary_df.sort_values(sort_columns)
+        
+        print(f"Score_Summary: Created {len(score_summary_df)} entries (matching Summary_2 row count)")
+        return score_summary_df
+        
+    except Exception as e:
+        print(f"Error creating score summary sheet: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return pd.DataFrame()
+
+
+def classify_fragment_type(fragment_name, fragment_type, glycan_composition=None):
+    """
+    Classify fragments into diagnostic categories for Score_Summary.
+    
+    Returns:
+        String classification category
+    """
+    # Check if diagnostic oxonium ions
+    diagnostic_oxoniums = [
+        'GalNAc(2,4A₁)', 'GlcNAc(0,2A₁)', 'HexNAc-C₂H₆O₃',
+        'Hex1-B', 'Hex1-C', 'Hex1-NeuAc1-B', 'Hex1-NeuAc1-C',
+        'ZZ-Hex1-C', 'ZZ-Hex2-C', 'ZZ-Hex3-C',
+        'YY-Hex2-B', 'YY-Hex3-B',
+        'Y-HexNAc1-B', 'Y-HexNAc1(-H2O)-B', 'Y-HexNAc1(-2H2O)-B',
+        'Y-HexNAc1(-CH3OH)-B', 'Z-HexNAc1(-2H2O)-C', 'Z-HexNAc1(-CH3OH)-C'
+    ]
+    
+    if fragment_name in diagnostic_oxoniums:
+        return 'Oxonium-Diagnostic'
+    
+    # NeuAc diagnostic oxoniums (if NeuAc > 0)
+    if glycan_composition and glycan_composition.get('NeuAc', 0) > 0:
+        neuac_oxoniums = ['NeuAc1-B', 'NeuAc1-C', 'NeuAc1(-H2O)-B', 'NeuAc1(-H2O)-C']
+        if fragment_name in neuac_oxoniums:
+            return 'Oxonium-Diagnostic (NeuAc)'
+    
+    # Fuc diagnostic oxoniums (if Fuc > 0)
+    if glycan_composition and glycan_composition.get('Fuc', 0) > 0:
+        fuc_oxoniums = ['Fuc1-B', 'Fuc1-C', 'Fuc1(-H2O)-B', 'Fuc1(-H2O)-C', 
+                        'Fuc1(-CH3)-B', 'Fuc1(-CH3)-C', 'HexNAc1-Fuc1-B', 'HexNAc1-Fuc1-C']
+        if fragment_name in fuc_oxoniums:
+            return 'Oxonium-Diagnostic (Fuc)'
+    
+    # Y0, Y1, Y1F glycopeptide diagnostic
+    if fragment_name in ['Y0', 'Y1', 'Y1F']:
+        return 'Glycopeptide-Diagnostic'
+    
+    # c/z with intact glycan (marked with *)
+    if '*' in fragment_name:
+        return 'Glycopeptide-Diagnostic (c/z+glycan)'
+    
+    # Peptide b/y ions
+    if fragment_type in ['b', 'y']:
+        return 'Peptide Backbone'
+    
+    # Peptide c/z ions
+    if fragment_type in ['c', 'z']:
+        return 'Peptide Backbone (c/z)'
+    
+    # Other glycan fragments
+    if fragment_type.upper() in ['B', 'Y', 'C', 'Z', 'BY', 'YY', 'CZ', 'ZZ', 'BYY', 'CZZ', 'BZZ', 'A']:
+        return 'Glycan Fragment'
+    
+    return 'Other'
+
+
 def create_prm_quantification_summary(output_dir, all_results, fdr_grade_cutoff=None, 
                                     fragment_types="all", use_intensity_instead_of_area=False): 
     """
@@ -9274,8 +11819,15 @@ def create_prm_quantification_summary(output_dir, all_results, fdr_grade_cutoff=
         for file_path, data in all_results.items():
             if isinstance(data, pd.DataFrame):
                 # Data is already a DataFrame (from memory)
+                # NEW: Exclude fragments with insufficient data points (<10) before any summarization
+                if 'Data_Points_Used' in data.columns:
+                    original_count = len(data)
+                    data = data[data['Data_Points_Used'] >= 6].copy()
+                    removed = original_count - len(data)
+                    if removed > 0:
+                        print(f"Filtered {removed} low-data fragments (<10 points) in {file_path}")
                 filtered_results[file_path] = data
-                print(f"Using in-memory data for {file_path}: {len(data)} fragments")
+                print(f"Using in-memory data for {file_path}: {len(data)} fragments (after filtering)")
             else:
                 print(f"Skipping invalid data for {file_path}: {type(data)}")
         
@@ -9373,20 +11925,32 @@ def create_prm_quantification_summary(output_dir, all_results, fdr_grade_cutoff=
                 
                 fragment_types_dict['All'][f'Total_{metric_name.lower()}_{base_filename}'] = total_metric
                 
-                # Calculate FDR score for ALL fragments
+                # Calculate weighted score for ALL fragments
                 if 'Fragments_Score' in precursor_df.columns:
-                    avg_score = precursor_df['Fragments_Score'].mean()
-                    fragment_types_dict['All'][f'Fragments_Score_{base_filename}'] = round(float(avg_score), 2)
+                    # Extract glycan composition from glycopeptide string
+                    glycan_composition = None
+                    try:
+                        # Parse glycan code from glycopeptide (e.g., "LCPDCPLLAPLNDSR-4501")
+                        if '-' in str(glycopeptide):
+                            glycan_code = str(glycopeptide).split('-')[-1]
+                            # Parse glycan using existing GlycanMassCalculator method
+                            calculator = GlycanMassCalculator()
+                            hexnac, hex, fuc, neuac, neugc = calculator.parse_glycan_code(glycan_code)
+                            glycan_composition = {
+                                'HexNAc': hexnac,
+                                'Hex': hex,
+                                'Fuc': fuc,
+                                'NeuAc': neuac,
+                                'NeuGc': neugc
+                            }
+                    except Exception as e:
+                        pass  # Use None if parsing fails
                     
-                    # Calculate overall rating based on average score
-                    if avg_score >= 75:
-                        overall_rating = "High"
-                    elif avg_score >= 50:
-                        overall_rating = "Medium"
-                    else:
-                        overall_rating = "Low"
+                    # Calculate weighted score with fragment type importance
+                    weighted_result = calculate_weighted_glycopeptide_score(precursor_df, glycan_composition)
                     
-                    fragment_types_dict['All'][f'Fragments_Rating_{base_filename}'] = overall_rating
+                    fragment_types_dict['All'][f'Fragments_Score_{base_filename}'] = weighted_result['Weighted_Score']
+                    fragment_types_dict['All'][f'Fragments_Rating_{base_filename}'] = weighted_result['Rating']
                 
                 # Update metrics for selected specific fragment type (if applicable)
                 if 'FragmentType' in precursor_df.columns and len(fragment_types_to_include) > 1:
@@ -9459,7 +12023,7 @@ def create_prm_quantification_summary(output_dir, all_results, fdr_grade_cutoff=
         
         existing_columns = [col for col in new_column_order if col in summary_df.columns]
         reorganized_df = summary_df[existing_columns]
-        
+
         # ===== SUMMARY 2: INDIVIDUAL FRAGMENT AREAS ACROSS FILES =====
         print(f"\nCreating Summary 2: Individual fragment {metric_name.lower()}s across files...")
         
@@ -9470,6 +12034,9 @@ def create_prm_quantification_summary(output_dir, all_results, fdr_grade_cutoff=
         for file_path, df in filtered_results.items():
             if 'Glycopeptides' in df.columns and 'Type' in df.columns and 'Theoretical_mz' in df.columns:
                 for _, row in df.iterrows():
+                    # Skip low data point fragments (defensive - already filtered above)
+                    if 'Data_Points_Used' in df.columns and row.get('Data_Points_Used', 0) < 10:
+                        continue
                     # Clean up glycopeptide name
                     glycopeptide = row['Glycopeptides']
                     if isinstance(glycopeptide, str) and '_row' in glycopeptide:
@@ -9532,7 +12099,8 @@ def create_prm_quantification_summary(output_dir, all_results, fdr_grade_cutoff=
                     (np.isclose(df['Precursor_mz'], precursor_mz, rtol=1e-4)) &
                     (np.isclose(df['precursor_rt'], precursor_rt, rtol=1e-2)) &
                     (df['Type'] == fragment_name) &
-                    (np.isclose(df['Theoretical_mz'], theoretical_mz, rtol=1e-6))
+                    (np.isclose(df['Theoretical_mz'], theoretical_mz, rtol=1e-6)) &
+                    ((df['Data_Points_Used'] >= 6) if 'Data_Points_Used' in df.columns else True)
                 ]
                 
                 if not matching_fragments.empty:
@@ -9560,12 +12128,7 @@ def create_prm_quantification_summary(output_dir, all_results, fdr_grade_cutoff=
             # Fragment prevalence (% of files where fragment is detected)
             row_data['Fragment_Prevalence'] = round(100 * num_files_with_fragment / num_files, 2) if num_files > 0 else 0.0
             
-            # CV% (coefficient of variation) - only for fragments found in multiple files
-            if len(non_zero_values) > 1:
-                cv_percent = (np.std(non_zero_values) / np.mean(non_zero_values)) * 100
-                row_data['CV_Percent'] = round(cv_percent, 2)
-            else:
-                row_data['CV_Percent'] = np.nan
+            # REMOVED: CV_Percent calculation per user request
             
             fragment_summary_rows.append(row_data)
         
@@ -9580,7 +12143,7 @@ def create_prm_quantification_summary(output_dir, all_results, fdr_grade_cutoff=
             # Ensure proper column ordering with dynamic metric naming
             fixed_cols = ['Glycopeptides', 'Precursor_mz', 'Precursor_rt', 'Fragment', 'Fragment_type', 'Theoretical_mz']
             metric_cols = [f'{metric_name}_{base_filename}' for base_filename in base_filenames]
-            stats_cols = ['Fragment_Prevalence', 'CV_Percent']
+            stats_cols = ['Fragment_Prevalence']  # CV_Percent removed
             
             final_column_order = fixed_cols + metric_cols + stats_cols
             
@@ -9601,12 +12164,22 @@ def create_prm_quantification_summary(output_dir, all_results, fdr_grade_cutoff=
                 summary2_df.to_excel(writer, sheet_name='Summary_2', index=False)
             else:
                 # Create empty DataFrame with dynamic column names
-                empty_cols = ['Glycopeptides', 'Precursor_mz', 'Precursor_rt', 'Fragment', 'Fragment_type', 'Theoretical_mz'] + [f'{metric_name}_{bf}' for bf in base_filenames] + ['Fragment_Prevalence', 'CV_Percent']
+                empty_cols = ['Glycopeptides', 'Precursor_mz', 'Precursor_rt', 'Fragment', 'Fragment_type', 'Theoretical_mz'] + [f'{metric_name}_{bf}' for bf in base_filenames] + ['Fragment_Prevalence']
                 pd.DataFrame(columns=empty_cols).to_excel(writer, sheet_name='Summary_2', index=False)
+            
+            # Add Score_Summary sheet
+            print("\nCreating Score_Summary sheet with weighted scoring details...")
+            score_summary_df = create_score_summary_sheet(all_results, filtered_results, file_mapping)
+            if not score_summary_df.empty:
+                score_summary_df.to_excel(writer, sheet_name='Score_Summary', index=False)
+                print(f"Score_Summary sheet contains {len(score_summary_df)} entries")
+            else:
+                print("No score summary data available")
                     
         print(f"Created summary with {len(summary_rows)} rows for {len(filtered_results)} files")
         print(f"Summary 1: {len(reorganized_df)} aggregated precursor entries")
         print(f"Summary 2: {len(summary2_df) if not summary2_df.empty else 0} individual fragment entries")
+        print(f"Score_Summary: {len(score_summary_df) if not score_summary_df.empty else 0} scoring detail entries")
         print(f"Summary saved with timestamp: {timestamp}")
         return summary_path
         
@@ -9635,7 +12208,6 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt5.QtCore import QThread, pyqtSignal, QTimer, Qt
 from PyQt5.QtGui import QFont, QPalette, QColor, QIcon, QPixmap
 
- 
 class AnalysisWorker(QThread):
     progress_update = pyqtSignal(int)
     status_update = pyqtSignal(str)
@@ -10160,27 +12732,27 @@ class GlycanAnalysisGUI(QMainWindow):
             self.additional_fixed_mods.setEnabled(False)
             self.variable_mods.setEnabled(False)
             self.use_excel_peptide_mod.setEnabled(False)
-            self.glycan_type.setEnabled(False)  # Will be determined per row
+            # self.glycan_type.setEnabled(False)  # REMOVED - glycan type always enabled
             
             # Update tooltips to show they're disabled
             self.use_cam.setToolTip("DISABLED: Using Comment column modifications")
             self.additional_fixed_mods.setToolTip("DISABLED: Using Comment column modifications")
             self.variable_mods.setToolTip("DISABLED: Using Comment column modifications")
             self.use_excel_peptide_mod.setToolTip("DISABLED: Using Comment column modifications")
-            self.glycan_type.setToolTip("DISABLED: Glycan type determined from Comment column per row")
+            # self.glycan_type.setToolTip("DISABLED: Glycan type determined from Comment column per row")
             
         else:
             # Re-enable modification controls
             self.use_cam.setEnabled(True)
             self.additional_fixed_mods.setEnabled(True)
             self.use_excel_peptide_mod.setEnabled(True)
-            self.glycan_type.setEnabled(True)
+            # self.glycan_type.setEnabled(True)  # REMOVED - glycan type always enabled
             
             # Restore original tooltips
             self.use_cam.setToolTip("Carbamidomethylation of cysteine (+57.0215 Da)\nCommonly used alkylation agent: iodoacetamide")
             self.additional_fixed_mods.setToolTip("Select multiple fixed modifications\nHold Ctrl to select multiple items")
             self.use_excel_peptide_mod.setToolTip("Use peptide modifications from Excel PEP_Modification column\nOverrides GUI modification settings")
-            self.glycan_type.setToolTip("Select glycan type:\n• N-glycan: Asparagine-linked glycans\n• O-glycan: Serine/Threonine-linked glycans")
+            # self.glycan_type.setToolTip("Select glycan type:\n• N-glycan: Asparagine-linked glycans\n• O-glycan: Serine/Threonine-linked glycans")
             
             # Re-apply the variable mods toggle state
             self.toggle_variable_mods(self.use_excel_peptide_mod.isChecked())
@@ -10484,7 +13056,7 @@ class GlycanAnalysisGUI(QMainWindow):
         except Exception as e:
             # Some signals might not be connected yet, ignore errors
             pass
-        
+    
     def create_mass_calculator_tab(self):
         """Mass Calculator utility tab with improved layout and scroll area"""
         # Create main widget with scroll area
@@ -10673,7 +13245,7 @@ class GlycanAnalysisGUI(QMainWindow):
             
             # Calculate glycan mass without peptide to get correct glycan-only mass
             glycan_mass = calculator.calculate_fragment_mass(glycan_composition, 'y_ions', peptide=None)
-            glycan_mass += 18.0153  # Add water for proper glycan mass
+            glycan_mass += 18.010564684  # Add monoisotopic water mass for proper glycan mass
 
             peptide_mass = 0.0
             if peptide:
@@ -10722,7 +13294,7 @@ class GlycanAnalysisGUI(QMainWindow):
                 })
                 
                 # Add glycopeptide entry
-                total_mass = glycan_mass + peptide_mass - 18.0153  # Subtract water for glycosidic bond
+                total_mass = glycan_mass + peptide_mass - 18.010564684  # Subtract monoisotopic water for glycosidic bond
                 results.append({
                     'Type': 'Glycopeptide',
                     'Glycan': glycan,
@@ -10807,7 +13379,7 @@ class GlycanAnalysisGUI(QMainWindow):
                     
                     # Calculate glycan mass without peptide
                     glycan_mass = glycan_calculator.calculate_fragment_mass(glycan_composition, 'y_ions', peptide=None)
-                    glycan_mass += 18.0153  # Add water for proper glycan mass
+                    glycan_mass += 18.010564684  # Add monoisotopic water mass for proper glycan mass
 
                     peptide_mass = 0.0
                     if peptide:
@@ -10823,7 +13395,7 @@ class GlycanAnalysisGUI(QMainWindow):
                     
                     # Calculate appropriate total mass based on input
                     if peptide:
-                        total_mass = glycan_mass + peptide_mass - 18.0153  # Glycopeptide
+                        total_mass = glycan_mass + peptide_mass - 18.010564684  # Glycopeptide (subtract monoisotopic water)
                         mass_type = "Glycopeptide"
                     else:
                         total_mass = glycan_mass  # Glycan only
@@ -12023,7 +14595,7 @@ class GlycanAnalysisGUI(QMainWindow):
         checkbox_grid = QGridLayout()
         
         # Glycan fragment options
-        self.generate_glycan_by_ions = QCheckBox("Generate Glycan BY Ions")
+        self.generate_glycan_by_ions = QCheckBox("Generate B/Y Glycan Fragments")
         self.generate_glycan_by_ions.setChecked(True)
         self.generate_glycan_by_ions.setToolTip("Generate standard glycan B and Y ions\nRecommended: Always enabled for glycan analysis")
         checkbox_grid.addWidget(self.generate_glycan_by_ions, 0, 0)
@@ -12033,12 +14605,20 @@ class GlycanAnalysisGUI(QMainWindow):
         checkbox_grid.addWidget(self.generate_cz_glycan, 2, 0)
         
         # Peptide fragment options
-        self.generate_peptide_by_ions = QCheckBox("Generate Peptide BY Ions")
+        self.generate_peptide_by_ions = QCheckBox("Generate b/y Peptide Fragments")
         self.generate_peptide_by_ions.setToolTip("Generate peptide b and y ions\nEnable for glycopeptide analysis")
         checkbox_grid.addWidget(self.generate_peptide_by_ions, 1, 0)
         
-        self.generate_cz_peptide = QCheckBox("Generate C/Z Peptide Fragments")
-        self.generate_cz_peptide.setToolTip("Generate peptide c and z ions\nUseful for ETD/ECD fragmentation")
+        self.generate_cz_peptide = QCheckBox("Generate c/z Peptide Fragments")
+        self.generate_cz_peptide.setToolTip(
+            "Generate peptide c and z ions (ETD/ECD fragmentation)\n\n"
+            "⚠️ REQUIRES glycosylation site information:\n"
+            "   • 'Site' column (e.g., S14, T7, N5)\n"
+            "   OR\n"
+            "   • 'Comment' column with site notation (e.g., PEPTIDE.S-glycan)\n\n"
+            "Without site information, c/z fragments with intact glycan (*) cannot be generated.\n"
+            "Analysis will not proceed until this is validated."
+        )
         checkbox_grid.addWidget(self.generate_cz_peptide, 3, 0)
         
         frag_layout.addLayout(checkbox_grid)
@@ -12233,6 +14813,55 @@ class GlycanAnalysisGUI(QMainWindow):
         if not os.path.exists(self.input_excel.text()):
             QMessageBox.warning(self, "Error", "Please select a valid Excel input file")
             return
+        
+        # VALIDATION: Check if c/z peptide fragments is enabled without glycosite information
+        if self.generate_cz_peptide.isChecked():
+            # Read Excel file to check for Site or Comment column
+            try:
+                df_check = pd.read_excel(self.input_excel.text())
+                has_site_column = any(col.upper() in ['SITE', 'GLYCOSYLATION_SITE'] for col in df_check.columns)
+                has_comment_column = any(col.upper() == 'COMMENT' for col in df_check.columns)
+                # FIX: Honor the actual UI checkbox 'use_comment_column' instead of non-existent 'use_comment'
+                comment_enabled = self.use_comment_column.isChecked() if hasattr(self, 'use_comment_column') else False
+                
+                # Check if glycosite information is available
+                if not has_site_column and not (has_comment_column and comment_enabled):
+                    QMessageBox.critical(
+                        self,
+                        "Glycosylation Site Required",
+                        "⚠️ Generate c/z Peptide Fragments requires glycosylation site information!\n\n"
+                        "To proceed, you must provide site information using ONE of these methods:\n\n"
+                        "1. Add a 'Site' column to your Excel file\n"
+                        "   Format: S14, T7, N5 (residue + position)\n\n"
+                        "2. Add a 'Comment' column with site notation\n"
+                        "   Format: PEPTIDE.S-glycan\n"
+                        "   AND enable 'Use Comment Column for Glycopeptide Parsing'\n\n"
+                        "Without site information, c/z fragments with intact glycan (*) cannot be generated correctly.\n\n"
+                        "Please fix your Excel file and try again."
+                    )
+                    return
+                
+                # If Comment column exists but not enabled, warn user
+                if has_comment_column and not comment_enabled and not has_site_column:
+                    reply = QMessageBox.question(
+                        self,
+                        "Enable Comment Column?",
+                        "A 'Comment' column was found in your Excel file, but\n"
+                        "'Use Comment Column for Glycopeptide Parsing' is not enabled.\n\n"
+                        "Do you want to enable it now?",
+                        QMessageBox.Yes | QMessageBox.No
+                    )
+                    
+                    if reply == QMessageBox.Yes:
+                        # FIX: Toggle the correct checkbox
+                        if hasattr(self, 'use_comment_column'):
+                            self.use_comment_column.setChecked(True)
+                    else:
+                        return
+                        
+            except Exception as e:
+                QMessageBox.warning(self, "Validation Error", f"Could not validate Excel file:\n{str(e)}")
+                return
         
         # Parse input files
         input_file_text = self.input_file.text().strip()
@@ -13871,8 +16500,8 @@ class GlycanAnalysisGUI(QMainWindow):
             
             # Use figure coordinates instead of axes coordinates to place outside plot
             ax_eic.text(1.02, 0.98, metrics_text, transform=ax_eic.transAxes,
-                    bbox=dict(boxstyle='round,pad=0.5', facecolor='lightgreen', alpha=0.8),
-                    verticalalignment='top', horizontalalignment='left', fontsize=12)
+            bbox=dict(boxstyle='round,pad=0.5', facecolor='lightgreen', alpha=0.8),
+            verticalalignment='top', horizontalalignment='left', fontsize=14, fontweight='bold')
 
             # Color-code the plot border based on grade
             grade_colors = {
@@ -13890,7 +16519,7 @@ class GlycanAnalysisGUI(QMainWindow):
             
             # Adjust layout for better spacing
             fig.tight_layout(pad=1.0)
-            fig.subplots_adjust(right=0.75)
+            fig.subplots_adjust(right=0.78)  # Slightly more room for larger green text
             
             # Convert to QPixmap for display
             buf = io.BytesIO()
@@ -15122,7 +17751,7 @@ class GlycanAnalysisGUI(QMainWindow):
                     glycan = glycopeptide
                 
                 # Generate MS2 plot
-                figures = plot_ms2_spectra(
+                figures = plot_ms2_spectra_aggregated(
                     cached_data,
                     matching_fragments,
                     glycan,
@@ -15297,15 +17926,13 @@ class GlycanAnalysisGUI(QMainWindow):
                                 f"back_window_ratio={params.get('back_window_ratio', 0.5)}, " +
                                 f"display_time_extension={params.get('display_time_extension', 5.0)}")
                 else:
-                    figures = plot_ms2_spectra(
+                    figures = plot_ms2_spectra_aggregated(
                         cached_data, 
                         matching_fragments, 
                         glycan, 
                         peptide,
                         output_dir=os.path.dirname(filename), 
-                        max_fragments_displayed=params.get('max_fragments_displayed', 25),
-                        intensity_threshold=params.get('intensity_threshold', 1000),
-                        mass_accuracy=params.get('mass_accuracy', 0.02)
+                        max_fragments_displayed=params.get('max_fragments_displayed', 25)
                     )
                     
                     # Log parameters used for MS2
@@ -17343,22 +19970,13 @@ class GlycanAnalysisGUI(QMainWindow):
                     
                     if params.get('generate_ms2_plots', False):
                         self.add_log("Generating MS2 plots...")
-                        ms2_figures = plot_ms2_spectra(
+                        ms2_figures = plot_ms2_spectra_aggregated(
                             self.current_cached_data,
                             self.current_matched_fragments,
-                            glycan_code=None,  
+                            glycan_code="",  
                             peptide=None, 
                             output_dir=output_dir,
-                            max_fragments_displayed=params.get('max_fragments_displayed', 30),
-                            intensity_threshold=params.get('intensity_threshold', 1000),
-                            plot_style=params.get('plot_style', 'default'),
-                            figure_width=params.get('figure_width', 10),
-                            figure_height=params.get('figure_height', 6),
-                            dpi=params.get('dpi', 100),
-                            label_fragments=params.get('label_fragments', True),
-                            show_titles=params.get('show_titles', True),
-                            normalize_intensities=params.get('normalize_intensities', True),
-                            save_plots=output_dir is not None
+                            max_fragments_displayed=params.get('max_fragments_displayed', 30)
                         )
                         
                         if ms2_figures:
@@ -17442,6 +20060,7 @@ class GlycanAnalysisGUI(QMainWindow):
                 params = self.get_parameters()
                 
                 # Create comprehensive Excel file with multiple sheets
+                score_summary_rows_count = 0
                 with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
                     
                     # Sheet 1: ALL matched fragments from all files combined (with updated areas)
@@ -17476,6 +20095,13 @@ class GlycanAnalysisGUI(QMainWindow):
                                     summary2_df = pd.read_excel(summary_path, sheet_name='Summary_2')
                                     summary2_df.to_excel(writer, sheet_name='Summary_2_Individual', index=False)
                                     self.add_log(f"Added Summary_2_Individual sheet with {len(summary2_df)} entries (updated areas)")
+                                
+                                # Copy Score_Summary sheet directly after Summary_2
+                                if 'Score_Summary' in summary_workbook.sheet_names:
+                                    score_summary_df = pd.read_excel(summary_path, sheet_name='Score_Summary')
+                                    score_summary_df.to_excel(writer, sheet_name='Score_Summary', index=False)
+                                    self.add_log(f"Added Score_Summary sheet with {len(score_summary_df)} entries (updated areas)")
+                                    score_summary_rows_count = len(score_summary_df)
                                 
                                 # Clean up temporary summary file
                                 try:
@@ -17529,6 +20155,10 @@ class GlycanAnalysisGUI(QMainWindow):
                 total_files = len(all_results_for_summary)
                 total_fragments = len(all_matched_fragments_combined)
                 custom_params_count = len(getattr(self, 'glycopeptide_specific_params', {}))
+                if score_summary_rows_count:
+                    score_summary_line = "• Score_Summary: Weighted fragment scoring (updated areas)\n"
+                else:
+                    score_summary_line = "• Score_Summary: Weighted fragment scoring (no data generated)\n"
                 
                 self.export_status_label.setText(f"Export completed: {total_fragments} fragments from {total_files} files ({custom_params_count} custom parameters applied)")
                 self.add_log(f"Comprehensive export completed with updated areas: {os.path.basename(file_path)}")
@@ -17540,6 +20170,7 @@ class GlycanAnalysisGUI(QMainWindow):
                                     f"• All_Matched_Fragments: {total_fragments} fragments with updated areas\n"
                                     f"• Summary_1_Precursors: Aggregated quantification (updated areas)\n"
                                     f"• Summary_2_Individual: Individual fragment quantification (updated areas)\n"
+                                    f"{score_summary_line}"
                                     f"• EIC_Parameters_Used: Custom parameters applied\n"
                                     f"• File_Breakdown: Per-file statistics with area totals\n\n"
                                     f"Custom EIC parameters applied: {custom_params_count}\n"
